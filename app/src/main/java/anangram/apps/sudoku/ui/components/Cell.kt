@@ -5,13 +5,14 @@ import anangram.apps.sudoku.models.CellModel
 import anangram.apps.sudoku.models.HighlightState
 import anangram.apps.sudoku.models.Value
 import anangram.apps.sudoku.ui.drawBorder
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -24,35 +25,33 @@ import androidx.compose.ui.unit.dp
 
 @Composable
 fun Cell(cell: CellModel, border: Border, onClicked: () -> Unit, modifier: Modifier = Modifier) {
-    Box(
-        contentAlignment = Alignment.Center, modifier = modifier
-            .aspectRatio(1f)
-            .drawBehind {
-                drawBorder(border)
-            }
-            .padding(4.dp)
-            .clip(CircleShape)
-            .clickable { onClicked() }
-            .background(
-                color = when (cell.highlightState) {
-                    HighlightState.IDLE -> Color.Transparent
-                    HighlightState.SELECTED -> MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
-                    HighlightState.SAME_VALUE -> MaterialTheme.colorScheme.secondaryContainer.copy(
-                        alpha = 0.2f
-                    )
-
-                    HighlightState.NEIGHBOUR -> MaterialTheme.colorScheme.tertiaryContainer.copy(
-                        alpha = 0.2f
-                    )
-
-                    HighlightState.ERROR -> MaterialTheme.colorScheme.error.copy(alpha = 0.2f)
-                }
-            )
-    ) {
-        Text(
-            text = cell.value.ordinal.toString(),
-            style = MaterialTheme.typography.bodyLarge,
+    val backgroundColor = when {
+        cell.highlightState == HighlightState.SAME_VALUE -> MaterialTheme.colorScheme.tertiary
+        cell.isFixed -> Color.LightGray.copy(alpha = 0.4f)
+        cell.highlightState == HighlightState.SELECTED -> MaterialTheme.colorScheme.primary
+        cell.highlightState == HighlightState.NEIGHBOUR -> MaterialTheme.colorScheme.secondary.copy(
+            alpha = 0.2f
         )
+
+        cell.highlightState == HighlightState.ERROR -> MaterialTheme.colorScheme.error
+
+        else -> Color.Transparent
+    }
+    Surface(
+        modifier = modifier
+            .aspectRatio(1f)
+            .drawBehind { drawBorder(border) }
+            .padding(4.dp)
+            .clip(if (cell.isFixed) RoundedCornerShape(2.dp) else CircleShape)
+            .clickable { onClicked() },
+        color = backgroundColor,
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            Text(
+                text = cell.value.ordinal.takeIf { it > 0 }?.toString() ?: " ",
+                style = MaterialTheme.typography.bodyLarge,
+            )
+        }
     }
 }
 

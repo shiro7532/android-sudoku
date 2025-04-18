@@ -17,7 +17,13 @@ class SudokuViewModel : ViewModel() {
     )
 
     private var _selectedCell: CellModel? by mutableStateOf(null)
+    val selectedCell: CellModel?
+        get() = _selectedCell
+
     private var _selectedValue: Value? by mutableStateOf(null)
+    val selectedValue: Value?
+        get() = _selectedValue
+
     private val _valueCellMap = Value.entries.filter { it != Value.UNASSIGNED }
         .associateWith { key -> instance.cells.filter { it.value == key }.toMutableSet() }
         .toMutableMap()
@@ -28,15 +34,18 @@ class SudokuViewModel : ViewModel() {
         when {
             _selectedCell == null -> selectNewCell(cell)
             _selectedCell == cell -> deselectCell(cell)
-            else -> selectDifferentCell(cell)
+            else -> {
+                _selectedCell?.let { deselectCell(it) }
+                selectNewCell(cell)
+            }
         }
     }
 
     private fun selectNewCell(cell: CellModel) {
         _selectedValue?.unHighlight()
         cell.highlightAsSelected()
-        cell.value.highlight()
         _selectedCell = cell
+        cell.value.highlight()
     }
 
     private fun deselectCell(cell: CellModel) {
@@ -45,28 +54,20 @@ class SudokuViewModel : ViewModel() {
         _selectedCell = null
     }
 
-    private fun selectDifferentCell(cell: CellModel) {
-        _selectedCell?.unHighlight()
-        if (cell.value != _selectedCell?.value) {
-            _selectedCell?.value?.unHighlight()
-            cell.value.highlight()
-        }
-        cell.highlightAsSelected()
-        _selectedCell = cell
-    }
-
     private fun Value.highlight() {
         if (this == Value.UNASSIGNED) return
         _selectedValue = this
         _valueCellMap[this]?.forEach {
-            it.highlightAsSameValue()
+            if (it.isFixed || it != selectedCell)
+                it.highlightAsSameValue()
         }
     }
 
     private fun Value.unHighlight() {
         if (this == Value.UNASSIGNED) return
         _valueCellMap[this]?.forEach {
-            it.unHighlight()
+            if (it != selectedCell)
+                it.unHighlight(affectNeighbors = false)
         }
         _selectedValue = null
     }
@@ -93,11 +94,11 @@ class SudokuViewModel : ViewModel() {
     }
 
     private fun setValue(value: Value) {
-        value.highlight()
         _selectedCell?.takeUnless { it.isFixed }?.let {
             it.setValue(value)
-            _valueCellMap[_selectedValue]?.add(it)
+            _valueCellMap[value]?.add(it)
         }
+        value.highlight()
     }
 
     private fun deleteValue() {
@@ -105,6 +106,7 @@ class SudokuViewModel : ViewModel() {
             it.setValue(Value.UNASSIGNED)
             _valueCellMap[_selectedValue]?.remove(it)
             _selectedValue?.unHighlight()
+            _selectedValue = null
         }
     }
 }

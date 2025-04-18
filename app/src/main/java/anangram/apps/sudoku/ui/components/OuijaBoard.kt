@@ -2,15 +2,15 @@ package anangram.apps.sudoku.ui.components
 
 import anangram.apps.sudoku.models.Value
 import anangram.apps.sudoku.viewmodels.SudokuViewModel
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
@@ -18,7 +18,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 
@@ -31,14 +30,26 @@ fun OuijaBoard(viewModel: SudokuViewModel, modifier: Modifier = Modifier) {
             .padding(16.dp)
     ) {
         items(viewModel.instance.size) { index ->
-            OuijaCell(value = Value.entries[index + 1], remaining = 4, onClicked = {
-                viewModel.onValueClicked(Value.entries[index + 1])
-            })
+            val item = Value.entries[index + 1]
+            OuijaCell(
+                enabled = viewModel.selectedCell?.isFixed == false,
+                selected = viewModel.selectedValue == item,
+                value = item,
+                remaining = 4,
+                onClicked = {
+                    viewModel.onValueClicked(item)
+                },
+            )
         }
         item {
-            OuijaCell(value = Value.UNASSIGNED, remaining = 0, onClicked = {
-                viewModel.onValueClicked(Value.UNASSIGNED)
-            })
+            OuijaCell(
+                enabled = viewModel.selectedCell != null && viewModel.selectedCell?.isFixed == false && viewModel.selectedCell?.value != Value.UNASSIGNED,
+                selected = false,
+                value = Value.UNASSIGNED,
+                remaining = 0,
+                onClicked = {
+                    viewModel.onValueClicked(Value.UNASSIGNED)
+                })
         }
     }
 
@@ -46,34 +57,51 @@ fun OuijaBoard(viewModel: SudokuViewModel, modifier: Modifier = Modifier) {
 }
 
 @Composable
-fun OuijaCell(value: Value, remaining: Int, onClicked: () -> Unit, modifier: Modifier = Modifier) {
-    Card(
-        colors = CardDefaults.cardColors(),
-        modifier = modifier
-            .clickable(onClick = onClicked)
-//            .background(
-//                if (value == Value.UNASSIGNED) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
-//            )
-    ) {
-        Box(
-            contentAlignment = Alignment.Center,
-            modifier = Modifier
-                .padding(8.dp)
-                .aspectRatio(1f)
-                .clip(CircleShape)
+fun OuijaCell(
+    enabled: Boolean,
+    selected: Boolean,
+    value: Value,
+    remaining: Int,
+    onClicked: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val backgroundColor =
+        when {
+            value == Value.UNASSIGNED -> MaterialTheme.colorScheme.error
+            selected -> MaterialTheme.colorScheme.primary
+            else -> MaterialTheme.colorScheme.primaryContainer
+        }
 
+    Card(
+        colors = CardDefaults.cardColors(
+            containerColor = backgroundColor,
+        ),
+        border = if (!selected) BorderStroke(
+            color = MaterialTheme.colorScheme.primary,
+            width = 1.dp
+        ) else null,
+        modifier = modifier
+            .padding(8.dp)
+            .clickable(enabled = enabled, onClick = onClicked)
+            .aspectRatio(1f)
+    ) {
+
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+            modifier = Modifier
+                .padding(2.dp)
+                .fillMaxSize()
         ) {
-            Column {
+            Text(
+                text = if (value == Value.UNASSIGNED) "X" else value.ordinal.toString(),
+                style = MaterialTheme.typography.titleLarge
+            )
+            if (value != Value.UNASSIGNED)
                 Text(
-                    text = if (value == Value.UNASSIGNED) "X" else value.ordinal.toString(),
-                    style = MaterialTheme.typography.bodyLarge
+                    remaining.toString(),
+                    style = MaterialTheme.typography.labelSmall
                 )
-                if (value != Value.UNASSIGNED)
-                    Text(
-                        remaining.toString(),
-                        style = MaterialTheme.typography.labelMedium
-                    )
-            }
         }
     }
 }
@@ -82,5 +110,5 @@ fun OuijaCell(value: Value, remaining: Int, onClicked: () -> Unit, modifier: Mod
 @Preview
 @Composable
 private fun OuijaCellPreview() {
-    OuijaCell(Value.SIX, 4, {})
+    OuijaCell(false, false, Value.SIX, 4, {})
 }
