@@ -24,11 +24,9 @@ class SudokuViewModel : ViewModel() {
     val selectedValue: Value?
         get() = _selectedValue
 
-    private val _valueCellMap = Value.entries.filter { it != Value.UNASSIGNED }
-        .associateWith { key -> instance.cells.filter { it.value == key }.toMutableSet() }
-        .toMutableMap()
-
-//    val countMap: Map<Value, Int> = _valueCellMap.mapValues { it.value.size }
+//    private val _valueCellMap = Value.entries.filter { it != Value.UNASSIGNED }
+//        .associateWith { key -> instance.cells.filter { it.value == key }.toMutableSet() }
+//        .toMutableMap()
 
     fun onCellClicked(cell: CellModel) {
         when {
@@ -57,7 +55,7 @@ class SudokuViewModel : ViewModel() {
     private fun Value.highlight() {
         if (this == Value.UNASSIGNED) return
         _selectedValue = this
-        _valueCellMap[this]?.forEach {
+        instance.ouijas[this.ordinal].cells.forEach {
             if (it.isFixed || it != selectedCell)
                 it.highlightAsSameValue()
         }
@@ -65,7 +63,7 @@ class SudokuViewModel : ViewModel() {
 
     private fun Value.unHighlight() {
         if (this == Value.UNASSIGNED) return
-        _valueCellMap[this]?.forEach {
+        instance.ouijas[this.ordinal].cells.forEach {
             if (it != selectedCell)
                 it.unHighlight(affectNeighbors = false)
         }
@@ -96,7 +94,7 @@ class SudokuViewModel : ViewModel() {
     private fun setValue(value: Value) {
         _selectedCell?.takeUnless { it.isFixed }?.let {
             it.setValue(value)
-            _valueCellMap[value]?.add(it)
+            instance.ouijas[value.ordinal].addCell(it)
         }
         value.highlight()
     }
@@ -104,7 +102,9 @@ class SudokuViewModel : ViewModel() {
     private fun deleteValue() {
         _selectedCell?.takeUnless { it.value == Value.UNASSIGNED || it.isFixed }?.let {
             it.setValue(Value.UNASSIGNED)
-            _valueCellMap[_selectedValue]?.remove(it)
+            _selectedValue?.ordinal?.let { index ->
+                instance.ouijas[index].removeCell(it)
+            }
             _selectedValue?.unHighlight()
             _selectedValue = null
         }

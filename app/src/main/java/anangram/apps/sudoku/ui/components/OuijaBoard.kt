@@ -2,8 +2,6 @@ package anangram.apps.sudoku.ui.components
 
 import anangram.apps.sudoku.models.Value
 import anangram.apps.sudoku.viewmodels.SudokuViewModel
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.aspectRatio
@@ -31,11 +29,14 @@ fun OuijaBoard(viewModel: SudokuViewModel, modifier: Modifier = Modifier) {
     ) {
         items(viewModel.instance.size) { index ->
             val item = Value.entries[index + 1]
+            val remaining = viewModel.instance.let {
+                it.size - it.ouijas[index + 1].count
+            }
             OuijaCell(
-                enabled = viewModel.selectedCell?.isFixed == false,
+                enabled = remaining > 0 && viewModel.selectedCell?.isFixed == false,
                 selected = viewModel.selectedValue == item,
                 value = item,
-                remaining = 4,
+                remaining = remaining,
                 onClicked = {
                     viewModel.onValueClicked(item)
                 },
@@ -69,20 +70,19 @@ fun OuijaCell(
         when {
             value == Value.UNASSIGNED -> MaterialTheme.colorScheme.error
             selected -> MaterialTheme.colorScheme.primary
-            else -> MaterialTheme.colorScheme.primaryContainer
+            else -> MaterialTheme.colorScheme.tertiary
         }
 
     Card(
+        onClick = onClicked,
+        enabled = enabled,
         colors = CardDefaults.cardColors(
             containerColor = backgroundColor,
+            disabledContainerColor = backgroundColor.copy(alpha = 0.7f)
         ),
-        border = if (!selected) BorderStroke(
-            color = MaterialTheme.colorScheme.primary,
-            width = 1.dp
-        ) else null,
+        border = null,
         modifier = modifier
             .padding(8.dp)
-            .clickable(enabled = enabled, onClick = onClicked)
             .aspectRatio(1f)
     ) {
 

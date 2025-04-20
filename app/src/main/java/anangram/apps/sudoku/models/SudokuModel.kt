@@ -7,8 +7,17 @@ data class SudokuModel(
     val input: Map<Int, Int>,
     val output: Map<Int, Int>
 ) {
+
     val cells = List(size * size) { i ->
         CellModel(Value.entries[input[i] ?: 0])
+    }
+
+    val ouijas = Value.entries.subList(0, size + 1).map { value ->
+        OuijaModel(
+            value = value,
+            cells = if (value == Value.UNASSIGNED) mutableSetOf() else cells.filter { it.value == value }
+                .toMutableSet()
+        )
     }
 
     val rows: List<List<CellModel>> = cells.chunked(size)
