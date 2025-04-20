@@ -1,79 +1,84 @@
 package anangram.apps.sudoku.models
 
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
 
-class CellModel(
-    val initialValue: Value,
+data class CellModel(
+    val position: Int,
+    val unitSize: Int,
+    val isFixed: Boolean,
+    val value: Value,
+    val pencilValues: Set<Value> = emptySet(),
+    val highlightState: HighlightState = HighlightState.IDLE,
 ) {
-    val isFixed: Boolean = initialValue != Value.UNASSIGNED
 
-    private var _value: Value by mutableStateOf(initialValue)
-    val value: Value
-        get() = _value
+    val neighbor: IntArray = IntArray((unitSize - 1) * (3 * unitSize + 1))
 
-    fun setValue(value: Value, isPencil: Boolean = false) {
-        if (isFixed) return
-        if (isPencil) {
-            _value = Value.UNASSIGNED
-            if (_pencilValues.contains(value)) {
-                _pencilValues.remove(value)
-            } else {
-                _pencilValues.add(value)
+    init {
+        val sideSize = unitSize * unitSize
+        val size = sideSize * sideSize
+        var index = 0
+        val row = position / sideSize
+
+        for (i in row * sideSize until (row + 1) * sideSize) {
+            if (i != position) {
+                neighbor[index] = i
+                index++
             }
-        } else {
-            _value = value
-            _pencilValues.clear()
-            if (value != Value.UNASSIGNED) {
-                _neighbor.forEach {
-                    if (it.pencilValues.contains(value)) {
-                        it._pencilValues.remove(value)
-                    }
-                    if (it.value == value) {
-                        it._highlightState = HighlightState.ERROR
-                        _highlightState = HighlightState.ERROR
-                    }
+        }
+        println(neighbor.contentToString())
+        println(index)
+        val column = position % sideSize
+        for (i in column until size step sideSize) {
+            if (i != position) {
+                neighbor[index] = i
+                index++
+            }
+        }
+        val boxStartRow = (row / unitSize) * unitSize
+        val boxStartCol = (column / unitSize) * unitSize
+        for (i in boxStartRow until boxStartRow + unitSize) {
+            for (j in boxStartCol until boxStartCol + unitSize) {
+                if (i != row && j != column) {
+                    neighbor[index++] = i * sideSize + j
                 }
             }
         }
+        println(index)
+
     }
 
-    private val _pencilValues: MutableSet<Value> = mutableSetOf()
-    val pencilValues: Set<Value>
-        get() = _pencilValues
 
-    private val _neighbor: MutableSet<CellModel> = mutableSetOf()
-    val neighbours: Set<CellModel>
-        get() = _neighbor
-
-    fun addNeighbor(cell: CellModel) {
-        _neighbor.add(cell)
-    }
-
-    private var _highlightState: HighlightState by mutableStateOf(HighlightState.IDLE)
-    val highlightState: HighlightState
-        get() = _highlightState
-
-    fun highlightAsSelected() {
-        _highlightState = HighlightState.SELECTED
-        neighbours.forEach { it.highlightAsNeighbor() }
-    }
-
-    fun highlightAsNeighbor() {
-        _highlightState = HighlightState.NEIGHBOUR
-    }
-
-    fun highlightAsSameValue() {
-        _highlightState = HighlightState.SAME_VALUE
-    }
-
-    fun unHighlight(affectNeighbors: Boolean = true) {
-        _highlightState = HighlightState.IDLE
-        if (affectNeighbors)
-            neighbours.forEach {
-                it._highlightState = HighlightState.IDLE
+    fun updateValue(value: Value, isPencil: Boolean = false): CellModel {
+        if (isFixed) return this
+        var newValue: Value
+        var newPencilValues: Set<Value>
+        if (isPencil) {
+            newValue = Value.UNASSIGNED
+            newPencilValues = if (pencilValues.contains(value)) {
+                pencilValues.minus(value)
+            } else {
+                pencilValues.plus(value)
             }
+        } else {
+            newValue = value
+            newPencilValues = emptySet()
+            // TODO: Handle removing pencil values
+//            if (value != Value.UNASSIGNED) {
+//                _neighbor.forEach {
+//                    if (it.pencilValues.contains(value)) {
+//                        it._pencilValues.remove(value)
+//                    }
+//                    if (it.value == value) {
+//                        it._highlightState = HighlightState.ERROR
+//                        _highlightState = HighlightState.ERROR
+//                    }
+//                }
+//            }
+        }
+        return this.copy(value = newValue, pencilValues = newPencilValues)
+    }
+
+    fun highlight(state: HighlightState): CellModel {
+        return this.copy(highlightState = state)
     }
 
 }

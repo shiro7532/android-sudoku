@@ -20,7 +20,12 @@ fun SudokuScreen(viewModel: SudokuViewModel, modifier: Modifier = Modifier) {
                     viewModel.onCellClicked(it)
                 }, modifier = Modifier.padding(8.dp)
             )
-            OuijaBoard(viewModel = viewModel, modifier = Modifier.padding(8.dp))
+            OuijaBoard(
+                map = viewModel.instance.ouijas,
+                onValueClicked = { viewModel.onValueClicked(it) },
+                onDeleteClicked = { viewModel.onDeleteClicked() },
+                modifier = Modifier.padding(8.dp)
+            )
         }
     }
 }

@@ -1,23 +1,17 @@
 package anangram.apps.sudoku.models
 
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.setValue
-
 data class OuijaModel(
-    var selected: Boolean = false,
+    val enabled: Boolean = false,
+    val selected: Boolean = false,
     val value: Value,
-    var cells: MutableSet<CellModel>,
+    val cells: Set<Int>,
 ) {
-    var count: Int by mutableIntStateOf(cells.size)
-    fun addCell(cell: CellModel) {
-        cells.add(cell)
-        count = cells.size
+    fun addCell(position: Int): OuijaModel {
+        return this.copy(cells = cells.plus(position))
     }
 
-    fun removeCell(cell: CellModel) {
-        cells.remove(cell)
-        count = cells.size
+    fun removeCell(position: Int): OuijaModel {
+        return this.copy(cells = cells.minus(position))
     }
 
 }

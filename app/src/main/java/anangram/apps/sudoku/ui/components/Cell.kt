@@ -59,7 +59,13 @@ fun Cell(cell: CellModel, border: Border, onClicked: () -> Unit, modifier: Modif
 @Composable
 private fun CellPreview() {
     Cell(
-        CellModel(initialValue = Value.UNASSIGNED), border = Border(
+        CellModel(
+            unitSize = 3,
+            position = 4,
+            value = Value.UNASSIGNED,
+            highlightState = HighlightState.IDLE,
+            isFixed = false
+        ), border = Border(
             color = MaterialTheme.colorScheme.primary,
             width = 0.5.dp,
             top = false,

@@ -1,7 +1,7 @@
 package anangram.apps.sudoku.ui.components
 
+import anangram.apps.sudoku.models.OuijaModel
 import anangram.apps.sudoku.models.Value
-import anangram.apps.sudoku.viewmodels.SudokuViewModel
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.aspectRatio
@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
@@ -20,37 +21,29 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 
 @Composable
-fun OuijaBoard(viewModel: SudokuViewModel, modifier: Modifier = Modifier) {
+fun OuijaBoard(
+    map: Map<Value, OuijaModel>,
+    onValueClicked: (Value) -> Unit,
+    onDeleteClicked: () -> Unit,
+    modifier: Modifier = Modifier
+) {
     LazyVerticalGrid(
         columns = GridCells.Adaptive(minSize = 60.dp),
         horizontalArrangement = Arrangement.Center,
         modifier = modifier
             .padding(16.dp)
     ) {
-        items(viewModel.instance.size) { index ->
-            val item = Value.entries[index + 1]
-            val remaining = viewModel.instance.let {
-                it.size - it.ouijas[index + 1].count
-            }
+        items(items = map.keys.toList()) { v: Value ->
+            val item = map[v]
             OuijaCell(
-                enabled = remaining > 0 && viewModel.selectedCell?.isFixed == false,
-                selected = viewModel.selectedValue == item,
-                value = item,
-                remaining = remaining,
+                model = item,
                 onClicked = {
-                    viewModel.onValueClicked(item)
+                    onValueClicked(v)
                 },
             )
         }
         item {
-            OuijaCell(
-                enabled = viewModel.selectedCell != null && viewModel.selectedCell?.isFixed == false && viewModel.selectedCell?.value != Value.UNASSIGNED,
-                selected = false,
-                value = Value.UNASSIGNED,
-                remaining = 0,
-                onClicked = {
-                    viewModel.onValueClicked(Value.UNASSIGNED)
-                })
+            OuijaCell(null, onClicked = onDeleteClicked)
         }
     }
 
@@ -59,23 +52,20 @@ fun OuijaBoard(viewModel: SudokuViewModel, modifier: Modifier = Modifier) {
 
 @Composable
 fun OuijaCell(
-    enabled: Boolean,
-    selected: Boolean,
-    value: Value,
-    remaining: Int,
+    model: OuijaModel?,
     onClicked: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val backgroundColor =
         when {
-            value == Value.UNASSIGNED -> MaterialTheme.colorScheme.error
-            selected -> MaterialTheme.colorScheme.primary
+            model == null -> MaterialTheme.colorScheme.tertiary
+            model.selected -> MaterialTheme.colorScheme.primary
             else -> MaterialTheme.colorScheme.tertiary
         }
 
     Card(
         onClick = onClicked,
-        enabled = enabled,
+        enabled = model?.enabled != false,
         colors = CardDefaults.cardColors(
             containerColor = backgroundColor,
             disabledContainerColor = backgroundColor.copy(alpha = 0.7f)
@@ -94,12 +84,12 @@ fun OuijaCell(
                 .fillMaxSize()
         ) {
             Text(
-                text = if (value == Value.UNASSIGNED) "X" else value.ordinal.toString(),
+                text = model?.value?.ordinal?.toString() ?: "X",
                 style = MaterialTheme.typography.titleLarge
             )
-            if (value != Value.UNASSIGNED)
+            if (model != null)
                 Text(
-                    remaining.toString(),
+                    model.cells.count().toString(),
                     style = MaterialTheme.typography.labelSmall
                 )
         }
@@ -110,5 +100,5 @@ fun OuijaCell(
 @Preview
 @Composable
 private fun OuijaCellPreview() {
-    OuijaCell(false, false, Value.SIX, 4, {})
+    OuijaCell(null, {})
 }

@@ -2,6 +2,7 @@ package anangram.apps.sudoku.ui.components
 
 import anangram.apps.sudoku.models.Border
 import anangram.apps.sudoku.models.CellModel
+import anangram.apps.sudoku.models.HighlightState
 import anangram.apps.sudoku.models.Value
 import anangram.apps.sudoku.ui.drawBorder
 import androidx.compose.foundation.layout.Column
@@ -19,7 +20,7 @@ import kotlin.math.sqrt
 fun CellBox(
     cells: List<CellModel>,
     border: Border,
-    onCellClicked: (CellModel) -> Unit,
+    onCellClicked: (Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val rows = cells.chunked(sqrt(cells.size.toDouble()).toInt())
@@ -42,7 +43,7 @@ fun CellBox(
                             bottom = false,
                             right = false
                         ),
-                        onClicked = { onCellClicked(cell) },
+                        onClicked = { onCellClicked(cell.position) },
                         modifier = Modifier.weight(1f),
                     )
                 }
@@ -53,10 +54,18 @@ fun CellBox(
 
 @Preview
 @Composable
-private fun BoxxPreview() {
+private fun CellBoxPreview() {
     MaterialTheme {
         CellBox(
-            List(9) { CellModel(Value.UNASSIGNED) },
+            List(9) {
+                CellModel(
+                    unitSize = 3,
+                    position = 4,
+                    value = Value.UNASSIGNED,
+                    highlightState = HighlightState.IDLE,
+                    isFixed = false
+                )
+            },
             Border(color = MaterialTheme.colorScheme.primary, width = 2.dp, true, true, true, true),
             onCellClicked = {},
         )
