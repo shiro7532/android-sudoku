@@ -1,52 +1,62 @@
 package anangram.apps.sudoku.models
 
-import kotlin.math.sqrt
-
 data class SudokuModel(
-    val size: Int,
+    val unitSize: Int,
+
     val input: Map<Int, Int>,
     val output: Map<Int, Int>
 ) {
+    val sideSize = unitSize * unitSize
+    val size = sideSize * sideSize
 
-    val cells = List(size * size) { i ->
-        CellModel(Value.entries[input[i] ?: 0])
+    val cells = Array(size) { i ->
+        CellModel(unitSize, Value.entries[input[i] ?: 0])
     }
 
-    val ouijas = Value.entries.subList(0, size + 1).map { value ->
+    val ouijas = Value.entries.subList(0, sideSize + 1).map { value ->
         OuijaModel(
             value = value,
-            cells = if (value == Value.UNASSIGNED) mutableSetOf() else cells.filter { it.value == value }
+            cells = if (value == Value.UNASSIGNED) mutableSetOf() else cells.filter { it.state.value == value }
                 .toMutableSet()
         )
     }
 
-    val rows: List<List<CellModel>> = cells.chunked(size)
-    val cols: List<List<CellModel>> = List(size) { col ->
-        cells.filterIndexed { index, _ -> index % size == col }
+    val rows = Array(sideSize) { row ->
+        Array(sideSize) { col ->
+            cells[row * sideSize + col]
+        }
     }
-    val boxSize = sqrt(size.toDouble()).toInt()
-    val boxes = List(size) { box ->
-        cells.filterIndexed { index, _ ->
-            val row = index / size
-            val col = index % size
-            val boxRow = row / boxSize
-            val boxCol = col / boxSize
-            boxRow * boxSize + boxCol == box
+
+    val cols = Array(sideSize) { col ->
+        Array(sideSize) { row ->
+            cells[row * sideSize + col]
+        }
+    }
+    val boxes = Array(sideSize) { box ->
+        val boxStartRow = (box / unitSize) * unitSize
+        val boxStartCol = (box % unitSize) * unitSize
+        Array(sideSize) { position ->
+            cells[(boxStartRow + position / unitSize) * sideSize + boxStartCol + position % unitSize]
         }
     }
 
     init {
-        fillNeighbors(rows)
-        fillNeighbors(cols)
-        fillNeighbors(boxes)
+        fillNeighbors()
     }
 
-    private fun fillNeighbors(group: List<List<CellModel>>) {
-        group.forEach { item ->
-            item.forEach { cell ->
-                item.filter { it != cell }.forEach { cell.addNeighbor(it) }
-            }
+    private fun fillNeighbors() {
+        cells.forEachIndexed { index, it ->
+            it.setNeighbors(getNeighbors(index))
         }
+    }
+
+    private fun getNeighbors(position: Int): Array<CellModel> {
+        return buildSet<CellModel> {
+            addAll(rows[position / sideSize])
+            addAll(cols[position % sideSize])
+            addAll(boxes[(position / sideSize) / unitSize * unitSize + (position % sideSize) / unitSize])
+            remove(cells[position])
+        }.toTypedArray()
     }
 
 

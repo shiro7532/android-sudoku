@@ -16,7 +16,9 @@ fun SudokuScreen(viewModel: SudokuViewModel, modifier: Modifier = Modifier) {
     Box(contentAlignment = Alignment.Center, modifier = modifier) {
         Column {
             SudokuBoard(
-                viewModel.instance, onCellClicked = {
+                unitSize = viewModel.instance.unitSize,
+                cells = viewModel.instance.cells,
+                onCellClicked = {
                     viewModel.onCellClicked(it)
                 }, modifier = Modifier.padding(8.dp)
             )

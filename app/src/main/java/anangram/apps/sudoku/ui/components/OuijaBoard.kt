@@ -27,10 +27,10 @@ fun OuijaBoard(viewModel: SudokuViewModel, modifier: Modifier = Modifier) {
         modifier = modifier
             .padding(16.dp)
     ) {
-        items(viewModel.instance.size) { index ->
+        items(viewModel.instance.sideSize) { index ->
             val item = Value.entries[index + 1]
             val remaining = viewModel.instance.let {
-                it.size - it.ouijas[index + 1].count
+                it.sideSize - it.ouijas[index + 1].count
             }
             OuijaCell(
                 enabled = remaining > 0 && viewModel.selectedCell?.isFixed == false,
@@ -44,7 +44,7 @@ fun OuijaBoard(viewModel: SudokuViewModel, modifier: Modifier = Modifier) {
         }
         item {
             OuijaCell(
-                enabled = viewModel.selectedCell != null && viewModel.selectedCell?.isFixed == false && viewModel.selectedCell?.value != Value.UNASSIGNED,
+                enabled = viewModel.selectedCell != null && viewModel.selectedCell?.isFixed == false && viewModel.selectedCell?.state?.value != Value.UNASSIGNED,
                 selected = false,
                 value = Value.UNASSIGNED,
                 remaining = 0,

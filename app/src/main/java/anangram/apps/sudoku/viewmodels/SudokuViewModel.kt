@@ -11,7 +11,7 @@ import androidx.lifecycle.ViewModel
 class SudokuViewModel : ViewModel() {
 
     val instance = SudokuModel(
-        9, mapOf(
+        3, mapOf(
             1 to 4, 3 to 3, 80 to 1, 40 to 7, 8 to 7
         ), emptyMap()
     )
@@ -28,7 +28,8 @@ class SudokuViewModel : ViewModel() {
 //        .associateWith { key -> instance.cells.filter { it.value == key }.toMutableSet() }
 //        .toMutableMap()
 
-    fun onCellClicked(cell: CellModel) {
+    fun onCellClicked(position: Int) {
+        val cell = instance.cells[position]
         when {
             _selectedCell == null -> selectNewCell(cell)
             _selectedCell == cell -> deselectCell(cell)
@@ -43,12 +44,12 @@ class SudokuViewModel : ViewModel() {
         _selectedValue?.unHighlight()
         cell.highlightAsSelected()
         _selectedCell = cell
-        cell.value.highlight()
+        cell.state.value.highlight()
     }
 
     private fun deselectCell(cell: CellModel) {
         cell.unHighlight()
-        cell.value.unHighlight()
+        cell.state.value.unHighlight()
         _selectedCell = null
     }
 
@@ -100,7 +101,7 @@ class SudokuViewModel : ViewModel() {
     }
 
     private fun deleteValue() {
-        _selectedCell?.takeUnless { it.value == Value.UNASSIGNED || it.isFixed }?.let {
+        _selectedCell?.takeUnless { it.state.value == Value.UNASSIGNED || it.isFixed }?.let {
             it.setValue(Value.UNASSIGNED)
             _selectedValue?.ordinal?.let { index ->
                 instance.ouijas[index].removeCell(it)
