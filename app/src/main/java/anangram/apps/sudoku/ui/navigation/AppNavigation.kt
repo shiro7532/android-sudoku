@@ -1,8 +1,11 @@
 package anangram.apps.sudoku.ui.navigation
 
 import anangram.apps.sudoku.ui.screens.SudokuScreen
+import anangram.apps.sudoku.viewmodels.SudokuViewModel
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -16,7 +19,15 @@ fun AppNavigation(modifier: Modifier = Modifier) {
         modifier = modifier
     ) {
         composable("sudoku") {
-            SudokuScreen(viewModel = viewModel())
+            val viewModel: SudokuViewModel = viewModel()
+            SudokuScreen(viewModel = viewModel)
+            val lifeCycleOwner = LocalLifecycleOwner.current
+            DisposableEffect(lifeCycleOwner) {
+                lifeCycleOwner.lifecycle.addObserver(viewModel)
+                onDispose {
+                    lifeCycleOwner.lifecycle.removeObserver(viewModel)
+                }
+            }
         }
     }
 }

@@ -3,16 +3,43 @@ package anangram.apps.sudoku.viewmodels
 import anangram.apps.sudoku.models.CellModel
 import anangram.apps.sudoku.models.SudokuModel
 import anangram.apps.sudoku.models.Value
+import android.util.Log
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
-class SudokuViewModel : ViewModel() {
+class SudokuViewModel : ViewModel(), LifecycleEventObserver {
 
     val instance = SudokuModel(
         3, mapOf(
-            1 to 4, 3 to 3, 80 to 1, 40 to 7, 8 to 7
+            0 to 4,
+            8 to 5,
+            9 to 3,
+            18 to 7,
+            26 to 2,
+            32 to 6,
+            36 to 8,
+            43 to 4,
+            45 to 1,
+            54 to 6,
+            56 to 3,
+            58 to 7,
+            60 to 5,
+            63 to 2,
+            70 to 1,
+            80 to 4,
         ), emptyMap()
     )
 
@@ -23,10 +50,6 @@ class SudokuViewModel : ViewModel() {
     private var _selectedValue: Value? by mutableStateOf(null)
     val selectedValue: Value?
         get() = _selectedValue
-
-//    private val _valueCellMap = Value.entries.filter { it != Value.UNASSIGNED }
-//        .associateWith { key -> instance.cells.filter { it.value == key }.toMutableSet() }
-//        .toMutableMap()
 
     fun onCellClicked(position: Int) {
         val cell = instance.cells[position]
@@ -108,6 +131,58 @@ class SudokuViewModel : ViewModel() {
             }
             _selectedValue?.unHighlight()
             _selectedValue = null
+        }
+    }
+
+    private val time = MutableStateFlow(0)
+    val timeFlow = time.asStateFlow()
+    private var timerJob: Job? = null
+    private var isRunning = false
+
+    fun startTimer() {
+        if (!isRunning) {
+            isRunning = true
+            timerJob = viewModelScope.launch {
+                withContext(Dispatchers.IO) {
+                    while (isRunning) {
+                        delay(1000) // Wait for 1 second
+                        time.emit(time.value + 1)
+                        Log.d("TimerViewModel", "seconds updated : $time")
+                    }
+                }
+
+            }
+        }
+    }
+
+    fun pauseTimer() {
+        timerJob?.cancel()
+        isRunning = false
+    }
+
+    fun resetTimer() {
+        viewModelScope.launch {
+            pauseTimer()
+            time.emit(0)
+        }
+    }
+
+    override fun onStateChanged(
+        source: LifecycleOwner,
+        event: Lifecycle.Event
+    ) {
+        when (event) {
+            Lifecycle.Event.ON_START -> {
+                Log.d("TimerViewModel", "App entering foreground")
+                startTimer()
+            }
+
+            Lifecycle.Event.ON_STOP -> {
+                Log.d("TimerViewModel", "App entering background")
+                pauseTimer()
+            }
+
+            else -> {}
         }
     }
 }
