@@ -51,6 +51,10 @@ class SudokuViewModel : ViewModel(), LifecycleEventObserver {
     val selectedValue: Value?
         get() = _selectedValue
 
+    private var _isPencil by mutableStateOf(false)
+    val isPencil: Boolean
+        get() = _isPencil
+
     fun onCellClicked(position: Int) {
         val cell = instance.cells[position]
         when {
@@ -117,10 +121,12 @@ class SudokuViewModel : ViewModel(), LifecycleEventObserver {
 
     private fun setValue(value: Value) {
         _selectedCell?.takeUnless { it.isFixed }?.let {
-            it.setValue(value)
-            instance.ouijas[value.ordinal].addCell(it)
+            it.setValue(value, isPencil)
+            instance.ouijas[value.ordinal].apply {
+                if (cells.contains(it)) removeCell(it) else addCell(it)
+            }
         }
-        value.highlight()
+        if (!isPencil) value.highlight()
     }
 
     private fun deleteValue() {
@@ -132,6 +138,10 @@ class SudokuViewModel : ViewModel(), LifecycleEventObserver {
             _selectedValue?.unHighlight()
             _selectedValue = null
         }
+    }
+
+    fun onPencilIconClicked() {
+        _isPencil = !isPencil
     }
 
     private val time = MutableStateFlow(0)
@@ -147,7 +157,6 @@ class SudokuViewModel : ViewModel(), LifecycleEventObserver {
                     while (isRunning) {
                         delay(1000) // Wait for 1 second
                         time.emit(time.value + 1)
-                        Log.d("TimerViewModel", "seconds updated : $time")
                     }
                 }
 

@@ -31,7 +31,14 @@ fun SudokuScreen(viewModel: SudokuViewModel, modifier: Modifier = Modifier) {
                 OuijaBoard(viewModel = viewModel, modifier = Modifier.padding(8.dp))
             }
         }
-        BottomBar()
+        BottomBar(
+            undoEnabled = false,
+            onUndoClicked = { },
+            redoEnabled = false,
+            onRedoClicked = { },
+            onResetClicked = { },
+            pencilEnabled = viewModel.isPencil,
+            onPencilClicked = viewModel::onPencilIconClicked,
+        )
     }
-
 }

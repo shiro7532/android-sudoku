@@ -12,12 +12,12 @@ data class OuijaModel(
     var count: Int by mutableIntStateOf(cells.size)
     fun addCell(cell: CellModel) {
         cells.add(cell)
-        count = cells.size
+        count = cells.count { it.pencilText.isEmpty() }
     }
 
     fun removeCell(cell: CellModel) {
         cells.remove(cell)
-        count = cells.size
+        count = cells.count { it.pencilText.isEmpty() }
     }
 
 }

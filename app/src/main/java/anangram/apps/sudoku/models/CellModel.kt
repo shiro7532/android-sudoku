@@ -18,26 +18,36 @@ class CellModel(
     var state: State by mutableStateOf(State(initialValue, HighlightState.IDLE, ""))
     val isFixed: Boolean = initialValue != Value.UNASSIGNED
     private val pencilValues = BooleanArray(unitSize * unitSize) { false }
-    var pencilText: String = ""
+    val pencilText: String
+        get() = buildString {
+            if (pencilValues.all { !it }) return@buildString
+            pencilValues.forEachIndexed { index, b ->
+                if (index % unitSize == 0 && index != 0) appendLine() else if (index != 0) append(
+                    ' '
+                )
+                if (b) append(index + 1) else append(' ')
+            }
+        }
+
 
     fun setValue(value: Value, isPencil: Boolean = false) {
         if (isFixed) return
+        // When delete is pressed, reset pencil values
+        if (value == Value.UNASSIGNED) {
+            state = state.copy(value = value, pencilText = "")
+            pencilValues.reset()
+            return
+        }
         if (isPencil) {
             togglePencilValue(value)
             state = state.copy(value = Value.UNASSIGNED, pencilText = pencilText)
         } else {
             pencilValues.reset()
             state = state.copy(value = value, pencilText = pencilText)
-            if (value != Value.UNASSIGNED) {
-                neighbors.forEach {
-                    if (it.pencilValues[value.ordinal - 1]) {
-                        it.togglePencilValue(value)
-                        it.state = it.state.copy(pencilText = it.pencilText)
-                    }
-//                    if (it.value == value) {
-//                        it._highlightState = HighlightState.ERROR
-//                        _highlightState = HighlightState.ERROR
-//                    }
+            neighbors.forEach {
+                if (it.pencilValues[value.ordinal - 1]) {
+                    it.togglePencilValue(value)
+                    it.state = it.state.copy(pencilText = it.pencilText)
                 }
             }
         }
@@ -45,19 +55,12 @@ class CellModel(
 
     private fun togglePencilValue(value: Value) {
         pencilValues[value.ordinal - 1] = !pencilValues[value.ordinal - 1]
-        pencilText = buildString {
-            pencilValues.forEachIndexed { index, b ->
-                if (index % unitSize == 0 && index != 0) append(' ')
-                if (b) append(index + 1) else append(' ')
-            }
-        }
     }
 
     private fun BooleanArray.reset() {
         forEachIndexed { index, _ ->
             this[index] = false
         }
-        pencilText = ""
     }
 
     private lateinit var neighbors: Array<CellModel>
@@ -89,6 +92,5 @@ class CellModel(
                 it.unHighlight(affectNeighbors = false)
             }
     }
-
 }
 
