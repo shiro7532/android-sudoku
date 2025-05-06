@@ -34,8 +34,8 @@ class CellModel(
         if (isFixed) return
         // When delete is pressed, reset pencil values
         if (value == Value.UNASSIGNED) {
-            state = state.copy(value = value, pencilText = "")
             pencilValues.reset()
+            state = state.copy(value = value, pencilText = pencilText)
             return
         }
         if (isPencil) {

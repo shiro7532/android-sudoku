@@ -24,22 +24,36 @@ class SudokuViewModel : ViewModel(), LifecycleEventObserver {
 
     val instance = SudokuModel(
         3, mapOf(
-            0 to 4,
-            8 to 5,
-            9 to 3,
-            18 to 7,
-            26 to 2,
-            32 to 6,
-            36 to 8,
-            43 to 4,
-            45 to 1,
-            54 to 6,
-            56 to 3,
-            58 to 7,
-            60 to 5,
-            63 to 2,
-            70 to 1,
-            80 to 4,
+            0 to 5,
+            1 to 3,
+            4 to 7,
+            9 to 6,
+            12 to 1,
+            13 to 9,
+            14 to 5,
+            19 to 9,
+            20 to 8,
+            25 to 6,
+            27 to 8,
+            31 to 6,
+            35 to 3,
+            36 to 4,
+            39 to 8,
+            41 to 3,
+            44 to 1,
+            45 to 7,
+            49 to 2,
+            53 to 6,
+            55 to 6,
+            60 to 2,
+            61 to 8,
+            66 to 4,
+            67 to 1,
+            68 to 9,
+            71 to 5,
+            76 to 8,
+            79 to 7,
+            80 to 9
         ), emptyMap()
     )
 
@@ -120,6 +134,11 @@ class SudokuViewModel : ViewModel(), LifecycleEventObserver {
     }
 
     private fun setValue(value: Value) {
+        selectedCell?.takeUnless { isPencil }?.let { cell ->
+            instance.ouijas.forEach {
+                it.removeCell(cell)
+            }
+        }
         _selectedCell?.takeUnless { it.isFixed }?.let {
             it.setValue(value, isPencil)
             instance.ouijas[value.ordinal].apply {
@@ -130,14 +149,18 @@ class SudokuViewModel : ViewModel(), LifecycleEventObserver {
     }
 
     private fun deleteValue() {
-        _selectedCell?.takeUnless { it.state.value == Value.UNASSIGNED || it.isFixed }?.let {
-            it.setValue(Value.UNASSIGNED)
-            _selectedValue?.ordinal?.let { index ->
-                instance.ouijas[index].removeCell(it)
+        _selectedCell?.takeUnless { (it.state.value == Value.UNASSIGNED && it.pencilText.isEmpty()) || it.isFixed }
+            ?.let {
+                instance.ouijas.forEach { ouija ->
+                    ouija.removeCell(it)
+                }
+                it.setValue(Value.UNASSIGNED)
+                _selectedValue?.ordinal?.let { index ->
+                    instance.ouijas[index].removeCell(it)
+                }
+                _selectedValue?.unHighlight()
+                _selectedValue = null
             }
-            _selectedValue?.unHighlight()
-            _selectedValue = null
-        }
     }
 
     fun onPencilIconClicked() {
