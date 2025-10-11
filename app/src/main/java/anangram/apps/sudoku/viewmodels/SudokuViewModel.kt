@@ -1,8 +1,7 @@
 package anangram.apps.sudoku.viewmodels
 
-import anangram.apps.sudoku.models.CellModel
+import anangram.apps.sudoku.models.Entry
 import anangram.apps.sudoku.models.SudokuModel
-import anangram.apps.sudoku.models.Value
 import android.util.Log
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -15,8 +14,11 @@ import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -57,114 +59,123 @@ class SudokuViewModel : ViewModel(), LifecycleEventObserver {
         ), emptyMap()
     )
 
-    private var _selectedCell: CellModel? by mutableStateOf(null)
-    val selectedCell: CellModel?
-        get() = _selectedCell
+    private val selectedPosition = MutableSharedFlow<Int?>(extraBufferCapacity = 10)
+    private var prevPosition: Int? = null
 
-    private var _selectedValue: Value? by mutableStateOf(null)
-    val selectedValue: Value?
-        get() = _selectedValue
+    private val _selectedEntry = MutableSharedFlow<Entry?>(extraBufferCapacity = 10)
+    val selectedEntry = _selectedEntry.asSharedFlow()
+    private var prevEntry: Entry? = null
 
     private var _isPencil by mutableStateOf(false)
     val isPencil: Boolean
         get() = _isPencil
 
-    fun onCellClicked(position: Int) {
-        val cell = instance.cells[position]
-        when {
-            _selectedCell == null -> selectNewCell(cell)
-            _selectedCell == cell -> deselectCell(cell)
-            else -> {
-                _selectedCell?.let { deselectCell(it) }
-                selectNewCell(cell)
+    private val boardUpdate = MutableSharedFlow<BoardUpdateEvent>()
+
+    fun onCellClicked(position: Int) = viewModelScope.launch {
+        selectedPosition.emit(if (position == prevPosition) null else position)
+    }
+
+    fun onValueClicked(entry: Entry) = viewModelScope.launch {
+        prevPosition?.let { position ->
+            val currentCell = instance.cells[position]
+            if (currentCell.isFixed) return@launch
+            val currentCellEntry = currentCell.state.value.entry
+            if (currentCellEntry == entry) return@launch
+            val update = when {
+                isPencil -> BoardUpdateEvent.MarkPencil(entry, position)
+                currentCellEntry == Entry.UNASSIGNED -> BoardUpdateEvent.Set(entry, position)
+                else -> BoardUpdateEvent.Replace(currentCellEntry, entry, position)
             }
+            boardUpdate.emit(update)
         }
     }
 
-    private fun selectNewCell(cell: CellModel) {
-        _selectedValue?.unHighlight()
-        cell.highlightAsSelected()
-        _selectedCell = cell
-        cell.state.value.highlight()
-    }
-
-    private fun deselectCell(cell: CellModel) {
-        cell.unHighlight()
-        cell.state.value.unHighlight()
-        _selectedCell = null
-    }
-
-    private fun Value.highlight() {
-        if (this == Value.UNASSIGNED) return
-        _selectedValue = this
-        instance.ouijas[this.ordinal].cells.forEach {
-            if (it.isFixed || it != selectedCell)
-                it.highlightAsSameValue()
+    fun onDeleteClicked() = viewModelScope.launch {
+        prevPosition?.let { position ->
+            val currentCell = instance.cells[position]
+            val currentCellEntry = currentCell.state.value.entry
+            boardUpdate.emit(BoardUpdateEvent.Delete(currentCellEntry, position))
         }
-    }
-
-    private fun Value.unHighlight() {
-        if (this == Value.UNASSIGNED) return
-        instance.ouijas[this.ordinal].cells.forEach {
-            if (it != selectedCell)
-                it.unHighlight(affectNeighbors = false)
-        }
-        _selectedValue = null
-    }
-
-    fun onValueClicked(value: Value) {
-
-        when {
-            value == Value.UNASSIGNED -> deleteValue()
-            _selectedValue == null -> setValue(value)
-            _selectedCell == null -> updateHighlightedValue(value)
-            _selectedValue != value -> {
-                deleteValue()
-                setValue(value)
-            }
-        }
-    }
-
-    private fun updateHighlightedValue(value: Value) {
-        val prevValue = _selectedValue
-        _selectedValue?.unHighlight()
-        if (value != prevValue) {
-            value.highlight()
-        }
-    }
-
-    private fun setValue(value: Value) {
-        selectedCell?.takeUnless { isPencil }?.let { cell ->
-            instance.ouijas.forEach {
-                it.removeCell(cell)
-            }
-        }
-        _selectedCell?.takeUnless { it.isFixed }?.let {
-            it.setValue(value, isPencil)
-            instance.ouijas[value.ordinal].apply {
-                if (cells.contains(it)) removeCell(it) else addCell(it)
-            }
-        }
-        if (!isPencil) value.highlight()
-    }
-
-    private fun deleteValue() {
-        _selectedCell?.takeUnless { (it.state.value == Value.UNASSIGNED && it.pencilText.isEmpty()) || it.isFixed }
-            ?.let {
-                instance.ouijas.forEach { ouija ->
-                    ouija.removeCell(it)
-                }
-                it.setValue(Value.UNASSIGNED)
-                _selectedValue?.ordinal?.let { index ->
-                    instance.ouijas[index].removeCell(it)
-                }
-                _selectedValue?.unHighlight()
-                _selectedValue = null
-            }
     }
 
     fun onPencilIconClicked() {
         _isPencil = !isPencil
+    }
+
+    init {
+        viewModelScope.launch {
+            selectedPosition.distinctUntilChanged().collect { curr ->
+                prevPosition?.let { clearSelection(it) }
+                curr?.let { setSelection(it) }
+                prevPosition = curr
+            }
+        }
+        viewModelScope.launch {
+            _selectedEntry.distinctUntilChanged().collect { curr ->
+                prevEntry?.let { unHighlightEntry(it) }
+                curr?.let { highlightEntry(it) }
+                prevEntry = curr
+            }
+        }
+        viewModelScope.launch {
+            boardUpdate.collect { event ->
+                when (event) {
+                    is BoardUpdateEvent.Set -> {
+                        instance.setEntry(event.entry, event.position)
+                        _selectedEntry.emit(event.entry)
+                    }
+
+                    is BoardUpdateEvent.Delete -> {
+                        instance.clearContent(event.position)
+                        _selectedEntry.emit(null)
+                    }
+
+                    is BoardUpdateEvent.Replace -> {
+                        instance.replaceEntry(event.new, event.position)
+                        _selectedEntry.emit(event.new)
+                    }
+
+                    is BoardUpdateEvent.MarkPencil -> {
+                        instance.markPencil(event.entry, event.position).let {
+                            _selectedEntry.emit(if (it) event.entry else null)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private suspend fun clearSelection(position: Int) {
+        val cell = instance.cells[position]
+        cell.unHighlight()
+        cell.state.value.entry.takeIf { it != Entry.UNASSIGNED }?.let { entry ->
+            _selectedEntry.emit(null)
+        }
+    }
+
+    private suspend fun setSelection(position: Int) {
+        val cell = instance.cells[position]
+        cell.highlightAsSelected()
+        cell.state.value.entry.takeIf { it != Entry.UNASSIGNED }?.let { entry ->
+            _selectedEntry.emit(entry)
+        }
+    }
+
+    private suspend fun unHighlightEntry(entry: Entry) {
+        if (entry == Entry.UNASSIGNED) return
+        instance.getSameEntryCells(entry).forEach {
+            if (prevPosition == null || instance.cells[prevPosition!!] != it)
+                it.unHighlight(affectNeighbors = false)
+        }
+    }
+
+    private suspend fun highlightEntry(entry: Entry) {
+        if (entry == Entry.UNASSIGNED) return
+        instance.getSameEntryCells(entry).forEach {
+            if (prevPosition == null || instance.cells[prevPosition!!] != it)
+                it.highlightAsSameValue()
+        }
     }
 
     private val time = MutableStateFlow(0)
@@ -182,7 +193,6 @@ class SudokuViewModel : ViewModel(), LifecycleEventObserver {
                         time.emit(time.value + 1)
                     }
                 }
-
             }
         }
     }
@@ -217,4 +227,13 @@ class SudokuViewModel : ViewModel(), LifecycleEventObserver {
             else -> {}
         }
     }
+}
+
+sealed class BoardUpdateEvent(open val position: Int) {
+    data class Set(val entry: Entry, override val position: Int) : BoardUpdateEvent(position)
+    data class Replace(val old: Entry, val new: Entry, override val position: Int) :
+        BoardUpdateEvent(position)
+
+    data class Delete(val entry: Entry, override val position: Int) : BoardUpdateEvent(position)
+    data class MarkPencil(val entry: Entry, override val position: Int) : BoardUpdateEvent(position)
 }

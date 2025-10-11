@@ -1,6 +1,6 @@
 package anangram.apps.sudoku.ui.components
 
-import anangram.apps.sudoku.models.Value
+import anangram.apps.sudoku.models.Entry
 import anangram.apps.sudoku.viewmodels.SudokuViewModel
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -17,6 +17,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.contentColorFor
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -27,6 +29,7 @@ import androidx.compose.ui.unit.dp
 
 @Composable
 fun OuijaBoard(viewModel: SudokuViewModel, modifier: Modifier = Modifier) {
+    val selectedEntry by viewModel.selectedEntry.collectAsState(null)
     LazyVerticalGrid(
         columns = GridCells.Adaptive(minSize = 60.dp),
         horizontalArrangement = Arrangement.Center,
@@ -34,13 +37,13 @@ fun OuijaBoard(viewModel: SudokuViewModel, modifier: Modifier = Modifier) {
             .padding(16.dp)
     ) {
         items(viewModel.instance.sideSize) { index ->
-            val item = Value.entries[index + 1]
+            val item = Entry.entries[index + 1]
             val remaining = viewModel.instance.let {
                 it.sideSize - it.ouijas[index + 1].count
             }
             OuijaCell(
-                selected = viewModel.selectedValue == item,
-                value = item,
+                selected = selectedEntry == item,
+                entry = item,
                 remaining = remaining,
                 onClicked = { viewModel.onValueClicked(item) },
             )
@@ -48,9 +51,9 @@ fun OuijaBoard(viewModel: SudokuViewModel, modifier: Modifier = Modifier) {
         item {
             OuijaCell(
                 selected = false,
-                value = Value.UNASSIGNED,
+                entry = Entry.UNASSIGNED,
                 remaining = 0,
-                onClicked = { viewModel.onValueClicked(Value.UNASSIGNED) }
+                onClicked = { viewModel.onDeleteClicked() }
             )
         }
     }
@@ -59,7 +62,7 @@ fun OuijaBoard(viewModel: SudokuViewModel, modifier: Modifier = Modifier) {
 @Composable
 fun OuijaCell(
     selected: Boolean,
-    value: Value,
+    entry: Entry,
     remaining: Int,
     onClicked: () -> Unit,
     modifier: Modifier = Modifier,
@@ -83,11 +86,11 @@ fun OuijaCell(
             .clickable(onClick = onClicked)
     ) {
         Text(
-            text = if (value == Value.UNASSIGNED) "X" else value.ordinal.toString(),
+            text = if (entry == Entry.UNASSIGNED) "X" else entry.ordinal.toString(),
             color = contentColorFor(backgroundColor),
             style = MaterialTheme.typography.titleLarge
         )
-        if (value != Value.UNASSIGNED)
+        if (entry != Entry.UNASSIGNED)
             Text(
                 remaining.toString(),
                 color = contentColorFor(backgroundColor),
@@ -100,5 +103,5 @@ fun OuijaCell(
 @Preview
 @Composable
 private fun OuijaCellPreview() {
-    OuijaCell(false, Value.SIX, 4, {})
+    OuijaCell(false, Entry.SIX, 4, {})
 }

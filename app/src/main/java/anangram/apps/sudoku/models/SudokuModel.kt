@@ -10,13 +10,13 @@ data class SudokuModel(
     val size = sideSize * sideSize
 
     val cells = Array(size) { i ->
-        CellModel(unitSize, Value.entries[input[i] ?: 0])
+        CellModel(unitSize, Entry.entries[input[i] ?: 0])
     }
 
-    val ouijas = Value.entries.subList(0, sideSize + 1).map { value ->
+    val ouijas = Entry.entries.subList(0, sideSize + 1).map { value ->
         OuijaModel(
-            value = value,
-            cells = if (value == Value.UNASSIGNED) mutableSetOf() else cells.filter { it.state.value == value }
+            entry = value,
+            cells = if (value == Entry.UNASSIGNED) mutableSetOf() else cells.filter { it.state.value.entry == value }
                 .toMutableSet()
         )
     }
@@ -51,7 +51,7 @@ data class SudokuModel(
     }
 
     private fun getNeighbors(position: Int): Array<CellModel> {
-        return buildSet<CellModel> {
+        return buildSet {
             addAll(rows[position / sideSize])
             addAll(cols[position % sideSize])
             addAll(boxes[(position / sideSize) / unitSize * unitSize + (position % sideSize) / unitSize])
@@ -59,5 +59,40 @@ data class SudokuModel(
         }.toTypedArray()
     }
 
+    fun getSameEntryCells(entry: Entry) = ouijas.first { it.entry == entry }.cells
+
+    suspend fun setEntry(entry: Entry, position: Int) {
+        val cell = cells[position]
+        removeCellFromOuijaBoard(cell)
+        cell.setEntry(entry)
+        ouijas[entry.ordinal].addCell(cell)
+    }
+
+    suspend fun replaceEntry(entry: Entry, position: Int) {
+        clearContent(position)
+        setEntry(entry, position)
+    }
+
+
+    suspend fun clearContent(position: Int) {
+        val cell = cells[position]
+        if (cell.isClean) return
+        removeCellFromOuijaBoard(cell)
+        cell.clearContent()
+    }
+
+    suspend fun markPencil(entry: Entry, position: Int): Boolean {
+        val cell = cells[position]
+        val isAdded = cell.togglePencil(entry)
+        if (isAdded)
+            ouijas[entry.ordinal].addCell(cell)
+        else
+            ouijas[entry.ordinal].removeCell(cell)
+        return isAdded
+    }
+
+    private fun removeCellFromOuijaBoard(cell: CellModel) = ouijas.forEach {
+        it.removeCell(cell)
+    }
 
 }

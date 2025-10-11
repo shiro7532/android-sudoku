@@ -1,5 +1,5 @@
 package anangram.apps.sudoku.models
 
-enum class Value {
+enum class Entry {
     UNASSIGNED, ONE, TWO, THREE, FOUR, FIVE, SIX, SEVEN, EIGHT, NINE
 }

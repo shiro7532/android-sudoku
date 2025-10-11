@@ -1,7 +1,7 @@
 package anangram.apps.sudoku.ui.components
 
 import anangram.apps.sudoku.models.CellModel
-import anangram.apps.sudoku.models.Value
+import anangram.apps.sudoku.models.Entry
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.material3.MaterialTheme
@@ -74,7 +74,7 @@ private fun SudokuModel() {
     MaterialTheme {
         SudokuBoard(
             unitSize = 9,
-            cells = Array(81) { CellModel(3, Value.UNASSIGNED) },
+            cells = Array(81) { CellModel(3, Entry.UNASSIGNED) },
             onCellClicked = {})
     }
 }

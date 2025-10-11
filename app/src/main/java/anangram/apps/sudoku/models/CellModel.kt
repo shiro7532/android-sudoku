@@ -1,22 +1,20 @@
 package anangram.apps.sudoku.models
 
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
+import kotlinx.coroutines.flow.MutableStateFlow
 
 class CellModel(
     val unitSize: Int,
-    val initialValue: Value,
+    val initialEntry: Entry,
 ) {
 
     data class State(
-        val value: Value,
+        val entry: Entry,
         val highlightState: HighlightState,
         val pencilText: String,
     )
 
-    var state: State by mutableStateOf(State(initialValue, HighlightState.IDLE, ""))
-    val isFixed: Boolean = initialValue != Value.UNASSIGNED
+    val state = MutableStateFlow(State(initialEntry, HighlightState.IDLE, ""))
+    val isFixed: Boolean = initialEntry != Entry.UNASSIGNED
     private val pencilValues = BooleanArray(unitSize * unitSize) { false }
     val pencilText: String
         get() = buildString {
@@ -29,38 +27,38 @@ class CellModel(
             }
         }
 
+    val isClean: Boolean
+        get() = state.value.entry == Entry.UNASSIGNED && pencilValues.all { false }
 
-    fun setValue(value: Value, isPencil: Boolean = false) {
-        if (isFixed) return
-        // When delete is pressed, reset pencil values
-        if (value == Value.UNASSIGNED) {
-            pencilValues.reset()
-            state = state.copy(value = value, pencilText = pencilText)
-            return
-        }
-        if (isPencil) {
-            togglePencilValue(value)
-            state = state.copy(value = Value.UNASSIGNED, pencilText = pencilText)
-        } else {
-            pencilValues.reset()
-            state = state.copy(value = value, pencilText = pencilText)
-            neighbors.forEach {
-                if (it.pencilValues[value.ordinal - 1]) {
-                    it.togglePencilValue(value)
-                    it.state = it.state.copy(pencilText = it.pencilText)
-                }
+
+    suspend fun setEntry(entry: Entry) {
+        if (isFixed || entry == Entry.UNASSIGNED) return
+
+        resetPencil()
+        state.emit(state.value.copy(entry = entry, pencilText = pencilText))
+        neighbors.forEach {
+            if (it.pencilValues[entry.ordinal - 1]) {
+                it.togglePencil(entry)
+                it.state.emit(it.state.value.copy(pencilText = it.pencilText))
             }
         }
     }
 
-    private fun togglePencilValue(value: Value) {
-        pencilValues[value.ordinal - 1] = !pencilValues[value.ordinal - 1]
+    suspend fun clearContent() {
+        if (isClean) return
+        resetPencil()
+        state.emit(state.value.copy(entry = Entry.UNASSIGNED, pencilText = pencilText))
     }
 
-    private fun BooleanArray.reset() {
-        forEachIndexed { index, _ ->
-            this[index] = false
-        }
+    suspend fun togglePencil(entry: Entry): Boolean {
+        pencilValues[entry.ordinal - 1] = !pencilValues[entry.ordinal - 1]
+        state.emit(state.value.copy(entry = Entry.UNASSIGNED, pencilText = pencilText))
+        return pencilValues[entry.ordinal - 1]
+
+    }
+
+    private fun resetPencil() {
+        pencilValues.fill(false)
     }
 
     private lateinit var neighbors: Array<CellModel>
@@ -70,23 +68,29 @@ class CellModel(
         this.neighbors = neighbors
     }
 
-    fun highlightAsSelected() {
-        state = state.copy(highlightState = HighlightState.SELECTED)
+    suspend fun highlight(highlightState: HighlightState, override: Boolean = false) {
+        if (override || state.value.highlightState.priority < highlightState.priority) {
+            state.emit(state.value.copy(highlightState = highlightState))
+        }
+    }
+
+    suspend fun highlightAsSelected(override: Boolean = false) {
+        highlight(HighlightState.SELECTED, override)
         neighbors.forEach {
             it.highlightAsNeighbor()
         }
     }
 
-    fun highlightAsNeighbor() {
-        state = state.copy(highlightState = HighlightState.NEIGHBOUR)
+    suspend fun highlightAsNeighbor(override: Boolean = false) {
+        highlight(HighlightState.NEIGHBOUR, override)
     }
 
-    fun highlightAsSameValue() {
-        state = state.copy(highlightState = HighlightState.SAME_VALUE)
+    suspend fun highlightAsSameValue(override: Boolean = false) {
+        highlight(HighlightState.SAME_VALUE, override)
     }
 
-    fun unHighlight(affectNeighbors: Boolean = true) {
-        state = state.copy(highlightState = HighlightState.IDLE)
+    suspend fun unHighlight(affectNeighbors: Boolean = true) {
+        state.emit(state.value.copy(highlightState = HighlightState.IDLE))
         if (affectNeighbors)
             neighbors.forEach {
                 it.unHighlight(affectNeighbors = false)
