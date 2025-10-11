@@ -6,7 +6,7 @@ import androidx.compose.runtime.setValue
 
 data class OuijaModel(
     var selected: Boolean = false,
-    val value: Value,
+    val entry: Entry,
     var cells: MutableSet<CellModel>,
 ) {
     var count: Int by mutableIntStateOf(cells.size)

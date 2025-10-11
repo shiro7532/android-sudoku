@@ -1,8 +1,8 @@
 package anangram.apps.sudoku.ui.components
 
 import anangram.apps.sudoku.models.CellModel
+import anangram.apps.sudoku.models.Entry
 import anangram.apps.sudoku.models.HighlightState
-import anangram.apps.sudoku.models.Value
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.aspectRatio
@@ -14,6 +14,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -26,15 +28,16 @@ import androidx.compose.ui.unit.dp
 
 @Composable
 fun Cell(cell: CellModel, onClicked: () -> Unit, modifier: Modifier = Modifier) {
+    val state by cell.state.collectAsState()
     val backgroundColor = when {
-        cell.state.highlightState == HighlightState.SAME_VALUE -> MaterialTheme.colorScheme.tertiary
+        state.highlightState == HighlightState.SELECTED -> MaterialTheme.colorScheme.primary
+        state.highlightState == HighlightState.SAME_VALUE -> MaterialTheme.colorScheme.tertiary
         cell.isFixed -> Color.LightGray.copy(alpha = 0.4f)
-        cell.state.highlightState == HighlightState.SELECTED -> MaterialTheme.colorScheme.primary
-        cell.state.highlightState == HighlightState.NEIGHBOUR -> MaterialTheme.colorScheme.secondary.copy(
+        state.highlightState == HighlightState.NEIGHBOUR -> MaterialTheme.colorScheme.secondary.copy(
             alpha = 0.2f
         )
 
-        cell.state.highlightState == HighlightState.ERROR -> MaterialTheme.colorScheme.error
+        state.highlightState == HighlightState.ERROR -> MaterialTheme.colorScheme.error
 
         else -> Color.Transparent
     }
@@ -49,7 +52,7 @@ fun Cell(cell: CellModel, onClicked: () -> Unit, modifier: Modifier = Modifier) 
         Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
             if (cell.pencilText.isEmpty())
                 Text(
-                    text = cell.state.value.ordinal.takeIf { it > 0 }?.toString() ?: " ",
+                    text = cell.state.value.entry.ordinal.takeIf { it > 0 }?.toString() ?: " ",
                     style = MaterialTheme.typography.bodyMedium,
                 )
             else
@@ -76,6 +79,6 @@ fun Cell(cell: CellModel, onClicked: () -> Unit, modifier: Modifier = Modifier) 
 @Composable
 private fun CellPreview() {
     Cell(
-        CellModel(3, initialValue = Value.UNASSIGNED), onClicked = {}
+        CellModel(3, initialEntry = Entry.UNASSIGNED), onClicked = {}
     )
 }
