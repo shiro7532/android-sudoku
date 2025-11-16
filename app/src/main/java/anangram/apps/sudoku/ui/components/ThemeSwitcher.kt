@@ -21,7 +21,7 @@ fun SwitchButton(
     IconButton(onClick = {}, modifier = modifier) {
         Box(
             contentAlignment = Alignment.Center, modifier = Modifier
-                .size(60.dp)
+                .size(24.dp)
                 .drawBehind {
                     drawCircle(
                         color = primary,
