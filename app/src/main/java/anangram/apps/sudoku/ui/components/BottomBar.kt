@@ -1,15 +1,9 @@
 package anangram.apps.sudoku.ui.components
 
+import anangram.apps.sudoku.R
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Check
-import androidx.compose.material.icons.outlined.Edit
-import androidx.compose.material.icons.outlined.KeyboardArrowLeft
-import androidx.compose.material.icons.outlined.KeyboardArrowRight
-import androidx.compose.material.icons.outlined.Refresh
-import androidx.compose.material.icons.outlined.ThumbUp
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
@@ -18,6 +12,7 @@ import androidx.compose.material3.contentColorFor
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 
 @Composable
 fun BottomBar(
@@ -30,35 +25,23 @@ fun BottomBar(
     onPencilClicked: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Row(horizontalArrangement = Arrangement.SpaceAround, modifier = modifier.fillMaxWidth()) {
+    Row(horizontalArrangement = Arrangement.SpaceEvenly, modifier = modifier.fillMaxWidth()) {
         IconButton(onClick = onResetClicked) {
             Icon(
-                imageVector = Icons.Outlined.Refresh,
+                painter = painterResource(R.drawable.ic_refresh),
                 contentDescription = "Reset Game"
-            )
-        }
-        IconButton(onClick = {}) {
-            Icon(
-                imageVector = Icons.Outlined.Check,
-                contentDescription = "Validate"
             )
         }
         IconButton(enabled = undoEnabled, onClick = onUndoClicked) {
             Icon(
-                imageVector = Icons.Outlined.KeyboardArrowLeft,
+                painter = painterResource(R.drawable.ic_undo),
                 contentDescription = "Undo"
             )
         }
         IconButton(enabled = redoEnabled, onClick = onRedoClicked) {
             Icon(
-                imageVector = Icons.Outlined.KeyboardArrowRight,
+                painter = painterResource(R.drawable.ic_redo),
                 contentDescription = "Redo"
-            )
-        }
-        IconButton(onClick = {}) {
-            Icon(
-                imageVector = Icons.Outlined.ThumbUp,
-                contentDescription = "Like?"
             )
         }
         val pencilContainerColor =
@@ -71,7 +54,7 @@ fun BottomBar(
             onClick = onPencilClicked
         ) {
             Icon(
-                imageVector = Icons.Outlined.Edit,
+                painter = painterResource(R.drawable.ic_edit),
                 contentDescription = "Pencil Mode"
             )
         }

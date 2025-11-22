@@ -16,6 +16,23 @@ class CellModel(
     val state = MutableStateFlow(State(initialEntry, HighlightState.IDLE, ""))
     val isFixed: Boolean = initialEntry != Entry.UNASSIGNED
     private val pencilValues = BooleanArray(unitSize * unitSize) { false }
+    fun getEncodedPencilValue(): Int {
+        var v = 0
+        for (i in pencilValues.indices) {
+            if (pencilValues[i]) v = v or (1 shl i)
+        }
+        return v
+    }
+
+    suspend fun decodePencilValue(mask: Int, size: Int = unitSize * unitSize) {
+        for (i in 0 until size) {
+            pencilValues[i] = (mask and (1 shl i)) != 0
+        }
+        state.emit(state.value.copy(pencilText = pencilText))
+
+    }
+
+
     val pencilText: String
         get() = buildString {
             if (pencilValues.all { !it }) return@buildString
@@ -28,7 +45,7 @@ class CellModel(
         }
 
     val isClean: Boolean
-        get() = state.value.entry == Entry.UNASSIGNED && pencilValues.all { false }
+        get() = state.value.entry == Entry.UNASSIGNED && pencilValues.all { !it }
 
 
     suspend fun setEntry(entry: Entry) {
@@ -36,16 +53,20 @@ class CellModel(
 
         resetPencil()
         state.emit(state.value.copy(entry = entry, pencilText = pencilText))
+
+        /*
+        TODO(Depends on Composite Events)
         neighbors.forEach {
             if (it.pencilValues[entry.ordinal - 1]) {
                 it.togglePencil(entry)
                 it.state.emit(it.state.value.copy(pencilText = it.pencilText))
             }
         }
+        */
     }
 
     suspend fun clearContent() {
-        if (isClean) return
+        if (isFixed || isClean) return
         resetPencil()
         state.emit(state.value.copy(entry = Entry.UNASSIGNED, pencilText = pencilText))
     }
@@ -54,8 +75,12 @@ class CellModel(
         pencilValues[entry.ordinal - 1] = !pencilValues[entry.ordinal - 1]
         state.emit(state.value.copy(entry = Entry.UNASSIGNED, pencilText = pencilText))
         return pencilValues[entry.ordinal - 1]
-
     }
+
+    fun hasPencil(entry: Entry): Boolean {
+        return pencilValues[entry.ordinal - 1]
+    }
+
 
     private fun resetPencil() {
         pencilValues.fill(false)

@@ -6,10 +6,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.LocalLifecycleOwner
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import org.koin.androidx.compose.koinViewModel
 
 @Composable
 fun AppNavigation(modifier: Modifier = Modifier) {
@@ -19,8 +19,8 @@ fun AppNavigation(modifier: Modifier = Modifier) {
         modifier = modifier
     ) {
         composable("sudoku") {
-            val viewModel: SudokuViewModel = viewModel()
-            SudokuScreen(viewModel = viewModel)
+            val viewModel: SudokuViewModel = koinViewModel()
+            SudokuScreen(vm = viewModel)
             val lifeCycleOwner = LocalLifecycleOwner.current
             DisposableEffect(lifeCycleOwner) {
                 lifeCycleOwner.lifecycle.addObserver(viewModel)

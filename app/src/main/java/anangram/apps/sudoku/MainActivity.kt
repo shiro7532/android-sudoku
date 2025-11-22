@@ -22,7 +22,9 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            SudokuTheme {
+            val themeRepository: ThemeRepository = get()
+            val themeIndex by themeRepository.themeIndex.collectAsState(initial = 0)
+            SudokuTheme(themeIndex) {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                     AppNavigation(
                         modifier = Modifier

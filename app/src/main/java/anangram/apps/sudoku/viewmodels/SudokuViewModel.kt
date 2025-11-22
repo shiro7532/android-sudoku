@@ -2,10 +2,9 @@ package anangram.apps.sudoku.viewmodels
 
 import anangram.apps.sudoku.models.Entry
 import anangram.apps.sudoku.models.SudokuModel
+import anangram.apps.sudoku.models.UndoRedoManager
+import anangram.apps.sudoku.ui.theme.ThemeRepository
 import android.util.Log
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.LifecycleOwner
@@ -14,15 +13,42 @@ import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
-class SudokuViewModel : ViewModel(), LifecycleEventObserver {
+data class SudokuUiState(
+    val sideSize: Int,
+    val remaining: Map<Entry, Int>,
+    val selectedCell: Int? = null,
+    val selectedEntry: Entry? = null,
+    val pencilMode: Boolean = false,
+    val undoAvailable: Boolean = false,
+    val redoAvailable: Boolean = false,
+    val time: Int = 0,
+    val showResetDialog: Boolean = false,
+    val themeIndex: Int = 0,
+    val isThemeSelectorOpen: Boolean = false
+)
+
+sealed interface SudokuUiAction {
+    data class CellClicked(val position: Int) : SudokuUiAction
+    data class ValueClicked(val entry: Entry) : SudokuUiAction
+    object DeleteClicked : SudokuUiAction
+    object UndoClicked : SudokuUiAction
+    object RedoClicked : SudokuUiAction
+    object PencilToggle : SudokuUiAction
+    object ResetRequested : SudokuUiAction
+    object ResetRequestDismissed : SudokuUiAction
+    object ResetRequestConfirmed : SudokuUiAction
+    object ToggleThemeSelector : SudokuUiAction
+    data class ThemeSelected(val index: Int) : SudokuUiAction
+}
+
+class SudokuViewModel(
+    val themeRepository: ThemeRepository
+) : ViewModel(), LifecycleEventObserver {
 
     val instance = SudokuModel(
         3, mapOf(
@@ -59,139 +85,218 @@ class SudokuViewModel : ViewModel(), LifecycleEventObserver {
         ), emptyMap()
     )
 
-    private val selectedPosition = MutableSharedFlow<Int?>(extraBufferCapacity = 10)
-    private var prevPosition: Int? = null
+    private val _uiState = MutableStateFlow(SudokuUiState(instance.sideSize, computeRemaining()))
+    val uiState = _uiState.asStateFlow()
 
-    private val _selectedEntry = MutableSharedFlow<Entry?>(extraBufferCapacity = 10)
-    val selectedEntry = _selectedEntry.asSharedFlow()
-    private var prevEntry: Entry? = null
+    private val undoRedoManager = UndoRedoManager()
 
-    private var _isPencil by mutableStateOf(false)
-    val isPencil: Boolean
-        get() = _isPencil
-
-    private val boardUpdate = MutableSharedFlow<BoardUpdateEvent>()
-
-    fun onCellClicked(position: Int) = viewModelScope.launch {
-        selectedPosition.emit(if (position == prevPosition) null else position)
+    private fun reduce(reducer: (SudokuUiState) -> SudokuUiState) {
+        _uiState.value = reducer(_uiState.value)
     }
 
-    fun onValueClicked(entry: Entry) = viewModelScope.launch {
-        prevPosition?.let { position ->
-            val currentCell = instance.cells[position]
-            if (currentCell.isFixed) return@launch
-            val currentCellEntry = currentCell.state.value.entry
-            if (currentCellEntry == entry) return@launch
-            val update = when {
-                isPencil -> BoardUpdateEvent.MarkPencil(entry, position)
-                currentCellEntry == Entry.UNASSIGNED -> BoardUpdateEvent.Set(entry, position)
-                else -> BoardUpdateEvent.Replace(currentCellEntry, entry, position)
+    fun dispatch(action: SudokuUiAction) {
+        when (action) {
+            is SudokuUiAction.CellClicked -> onCellClicked(action.position)
+            is SudokuUiAction.ValueClicked -> onValueClicked(action.entry)
+            SudokuUiAction.DeleteClicked -> onDeleteClicked()
+            SudokuUiAction.UndoClicked -> undo()
+            SudokuUiAction.RedoClicked -> redo()
+            SudokuUiAction.PencilToggle -> togglePencil()
+            SudokuUiAction.ResetRequested -> showResetDialog()
+            SudokuUiAction.ResetRequestDismissed -> clearResetDialog()
+            SudokuUiAction.ResetRequestConfirmed -> resetPuzzle()
+            is SudokuUiAction.ThemeSelected -> selectTheme(action.index)
+            SudokuUiAction.ToggleThemeSelector -> toggleThemeSelector()
+        }
+    }
+
+    private fun onCellClicked(position: Int) = viewModelScope.launch {
+        val prev = uiState.value.selectedCell
+        val newPos = if (prev == position) null else position
+
+        reduce { it.copy(selectedCell = newPos) }
+
+        // update highlight via model
+        if (prev != null) instance.cells[prev].unHighlight()
+        newPos?.let { instance.cells[it].highlightAsSelected() }
+
+        // update selectedEntry based on cell content
+        val entry = newPos?.let { instance.cells[it].state.value.entry }
+        reduce { it.copy(selectedEntry = entry.takeIf { e -> e != Entry.UNASSIGNED }) }
+    }
+
+    private fun onValueClicked(entry: Entry) = viewModelScope.launch {
+        val pos = uiState.value.selectedCell ?: return@launch
+        val isPencil = uiState.value.pencilMode
+
+        val (before, after) = instance.handleEvent(
+            BoardUpdateEvent.Set(entry, pos, isPencil)
+        )
+
+        undoRedoManager.registerMove(
+            UndoRedoManager.Move.Set(pos, isPencil, before, after)
+        )
+
+        reduce {
+            it.copy(
+                selectedEntry = if (!isPencil) entry else
+                    entry.takeIf { instance.cells[pos].hasPencil(entry) },
+                undoAvailable = undoRedoManager.undoAvailable,
+                redoAvailable = undoRedoManager.redoAvailable,
+                remaining = computeRemaining()
+
+            )
+        }
+    }
+
+    private fun onDeleteClicked() = viewModelScope.launch {
+        val pos = uiState.value.selectedCell ?: return@launch
+        val isPencil = uiState.value.pencilMode
+
+        val (before, after) = instance.handleEvent(
+            BoardUpdateEvent.Delete(pos, isPencil)
+        )
+        undoRedoManager.registerMove(
+            UndoRedoManager.Move.Clear(pos, isPencil, before, after)
+        )
+
+        reduce {
+            it.copy(
+                selectedEntry = null,
+                undoAvailable = undoRedoManager.undoAvailable,
+                redoAvailable = undoRedoManager.redoAvailable,
+                remaining = computeRemaining()
+            )
+        }
+    }
+
+    private fun undo() = viewModelScope.launch {
+        val (pos, state) = undoRedoManager.undo()
+        instance.setEntryState(pos, state)
+
+        // Highlight cells & update selectedEntry
+        forceSelectCell(pos)   // <-- use this
+
+        // Update remaining, undo/redo, etc
+        reduce {
+            it.copy(
+                undoAvailable = undoRedoManager.undoAvailable,
+                redoAvailable = undoRedoManager.redoAvailable,
+                remaining = computeRemaining()
+            )
+        }
+    }
+
+    private fun redo() = viewModelScope.launch {
+        val (pos, state) = undoRedoManager.redo()
+        instance.setEntryState(pos, state)
+
+        forceSelectCell(pos)   // <-- use this
+
+        reduce {
+            it.copy(
+                undoAvailable = undoRedoManager.undoAvailable,
+                redoAvailable = undoRedoManager.redoAvailable,
+                remaining = computeRemaining()
+            )
+        }
+    }
+
+    private fun forceSelectCell(pos: Int) = viewModelScope.launch {
+        val prev = uiState.value.selectedCell
+        if (prev != null && prev != pos) {
+            instance.cells[prev].unHighlight()
+        }
+
+        instance.cells[pos].highlightAsSelected()
+
+        val entry = instance.cells[pos].state.value.entry
+        reduce {
+            it.copy(
+                selectedCell = pos,
+                selectedEntry = entry.takeIf { e -> e != Entry.UNASSIGNED }
+            )
+        }
+    }
+
+    private fun togglePencil() {
+        reduce { it.copy(pencilMode = !it.pencilMode) }
+    }
+
+    private fun computeRemaining(): Map<Entry, Int> {
+        val max = instance.sideSize
+        return Entry.entries
+            .filter { it != Entry.UNASSIGNED }
+            .associateWith { entry ->
+                max - instance.getSameEntryCells(entry).size
             }
-            boardUpdate.emit(update)
+    }
+
+    private fun showResetDialog() {
+        reduce { it.copy(showResetDialog = true) }
+    }
+
+    private fun clearResetDialog() {
+        reduce { it.copy(showResetDialog = false) }
+    }
+
+    private fun resetPuzzle() = viewModelScope.launch {
+
+        // 1. Clear selection & highlights
+        uiState.value.selectedCell?.let { pos ->
+            instance.cells[pos].unHighlight()
+        }
+
+        // 2. Clear all cell state in the model
+        instance.cells.forEach { cell ->
+            cell.clearContent()
+        }
+
+        // 3. Clear undo/redo stacks
+        undoRedoManager.clear()
+
+        // 4. Reset UiState
+        reduce {
+            it.copy(
+                selectedCell = null,
+                selectedEntry = null,
+                pencilMode = false,
+                undoAvailable = false,
+                redoAvailable = false,
+                remaining = computeRemaining(),
+                showResetDialog = false
+            )
         }
     }
 
-    fun onDeleteClicked() = viewModelScope.launch {
-        prevPosition?.let { position ->
-            val currentCell = instance.cells[position]
-            val currentCellEntry = currentCell.state.value.entry
-            boardUpdate.emit(BoardUpdateEvent.Delete(currentCellEntry, position))
-        }
+    private fun toggleThemeSelector() {
+        reduce { it.copy(isThemeSelectorOpen = !it.isThemeSelectorOpen) }
     }
 
-    fun onPencilIconClicked() {
-        _isPencil = !isPencil
-    }
-
-    init {
+    private fun selectTheme(index: Int) {
         viewModelScope.launch {
-            selectedPosition.distinctUntilChanged().collect { curr ->
-                prevPosition?.let { clearSelection(it) }
-                curr?.let { setSelection(it) }
-                prevPosition = curr
-            }
+            themeRepository.setTheme(index)
         }
-        viewModelScope.launch {
-            _selectedEntry.distinctUntilChanged().collect { curr ->
-                prevEntry?.let { unHighlightEntry(it) }
-                curr?.let { highlightEntry(it) }
-                prevEntry = curr
-            }
+        reduce {
+            it.copy(
+                themeIndex = index,
+//                isThemeSelectorOpen = false
+            )
         }
-        viewModelScope.launch {
-            boardUpdate.collect { event ->
-                when (event) {
-                    is BoardUpdateEvent.Set -> {
-                        instance.setEntry(event.entry, event.position)
-                        _selectedEntry.emit(event.entry)
-                    }
 
-                    is BoardUpdateEvent.Delete -> {
-                        instance.clearContent(event.position)
-                        _selectedEntry.emit(null)
-                    }
-
-                    is BoardUpdateEvent.Replace -> {
-                        instance.replaceEntry(event.new, event.position)
-                        _selectedEntry.emit(event.new)
-                    }
-
-                    is BoardUpdateEvent.MarkPencil -> {
-                        instance.markPencil(event.entry, event.position).let {
-                            _selectedEntry.emit(if (it) event.entry else null)
-                        }
-                    }
-                }
-            }
-        }
+        // Save to datastore if needed...
     }
 
-    private suspend fun clearSelection(position: Int) {
-        val cell = instance.cells[position]
-        cell.unHighlight()
-        cell.state.value.entry.takeIf { it != Entry.UNASSIGNED }?.let { entry ->
-            _selectedEntry.emit(null)
-        }
-    }
-
-    private suspend fun setSelection(position: Int) {
-        val cell = instance.cells[position]
-        cell.highlightAsSelected()
-        cell.state.value.entry.takeIf { it != Entry.UNASSIGNED }?.let { entry ->
-            _selectedEntry.emit(entry)
-        }
-    }
-
-    private suspend fun unHighlightEntry(entry: Entry) {
-        if (entry == Entry.UNASSIGNED) return
-        instance.getSameEntryCells(entry).forEach {
-            if (prevPosition == null || instance.cells[prevPosition!!] != it)
-                it.unHighlight(affectNeighbors = false)
-        }
-    }
-
-    private suspend fun highlightEntry(entry: Entry) {
-        if (entry == Entry.UNASSIGNED) return
-        instance.getSameEntryCells(entry).forEach {
-            if (prevPosition == null || instance.cells[prevPosition!!] != it)
-                it.highlightAsSameValue()
-        }
-    }
-
-    private val time = MutableStateFlow(0)
-    val timeFlow = time.asStateFlow()
     private var timerJob: Job? = null
     private var isRunning = false
 
     fun startTimer() {
         if (!isRunning) {
             isRunning = true
-            timerJob = viewModelScope.launch {
-                withContext(Dispatchers.IO) {
-                    while (isRunning) {
-                        delay(1000) // Wait for 1 second
-                        time.emit(time.value + 1)
-                    }
+            timerJob = viewModelScope.launch(Dispatchers.Main) {
+                while (isRunning) {
+                    delay(1000)
+                    _uiState.update { it.copy(time = it.time + 1) }
                 }
             }
         }
@@ -202,12 +307,6 @@ class SudokuViewModel : ViewModel(), LifecycleEventObserver {
         isRunning = false
     }
 
-    fun resetTimer() {
-        viewModelScope.launch {
-            pauseTimer()
-            time.emit(0)
-        }
-    }
 
     override fun onStateChanged(
         source: LifecycleOwner,
@@ -229,11 +328,10 @@ class SudokuViewModel : ViewModel(), LifecycleEventObserver {
     }
 }
 
-sealed class BoardUpdateEvent(open val position: Int) {
-    data class Set(val entry: Entry, override val position: Int) : BoardUpdateEvent(position)
-    data class Replace(val old: Entry, val new: Entry, override val position: Int) :
-        BoardUpdateEvent(position)
+sealed class BoardUpdateEvent(open val position: Int, open val inPencil: Boolean) {
+    data class Set(val entry: Entry, override val position: Int, override val inPencil: Boolean) :
+        BoardUpdateEvent(position, inPencil)
 
-    data class Delete(val entry: Entry, override val position: Int) : BoardUpdateEvent(position)
-    data class MarkPencil(val entry: Entry, override val position: Int) : BoardUpdateEvent(position)
+    data class Delete(override val position: Int, override val inPencil: Boolean) :
+        BoardUpdateEvent(position, inPencil)
 }

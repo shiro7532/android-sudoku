@@ -1,5 +1,6 @@
 package anangram.apps.sudoku.ui.theme
 
+import android.content.Context
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
@@ -10,7 +11,11 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-
+import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.intPreferencesKey
+import androidx.datastore.preferences.preferencesDataStore
+import animatedColorScheme
+import kotlinx.coroutines.flow.map
 
 // Light theme
 val PeachLightColorScheme = lightColorScheme(
@@ -31,7 +36,6 @@ val PeachLightColorScheme = lightColorScheme(
     error = PeachError
 )
 
-// Dark theme
 val PeachDarkColorScheme = darkColorScheme(
     primary = PeachPrimary,
     onPrimary = PeachOnPrimary,
@@ -50,25 +54,59 @@ val PeachDarkColorScheme = darkColorScheme(
     error = PeachError
 )
 
+val Context.themeDataStore by preferencesDataStore("theme_preferences")
+
+object ThemePrefs {
+    val THEME_INDEX = intPreferencesKey("theme_index")
+}
+
+class ThemeRepository(private val context: Context) {
+
+    val themeIndex = context.themeDataStore.data.map { prefs ->
+        prefs[ThemePrefs.THEME_INDEX] ?: 0
+    }
+
+    suspend fun setTheme(index: Int) {
+        context.themeDataStore.edit { prefs ->
+            prefs[ThemePrefs.THEME_INDEX] = index
+        }
+    }
+}
+
 @Composable
 fun SudokuTheme(
+    themeIndex: Int,   // <-- controlled by datastore + VM
     darkTheme: Boolean = isSystemInDarkTheme(),
-    // Dynamic color is available on Android 12+
     dynamicColor: Boolean = true,
     content: @Composable () -> Unit
 ) {
-    val colorScheme = when {
-        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
-            val context = LocalContext.current
-            if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-        }
+    val context = LocalContext.current
 
-        darkTheme -> PeachDarkColorScheme
-        else -> PeachLightColorScheme
-    }
+    // Your 5 ColorSchemes
+    val customPalettes = ThemePresets.All
+
+    val colorScheme =
+        if (themeIndex in customPalettes.indices) {
+            customPalettes[themeIndex].let {
+                if (darkTheme)
+                    it.dark
+                else it.light
+            }  // <-- user-set theme
+        } else {
+            // fallback to system/dynamic
+            when {
+                dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S ->
+                    if (darkTheme) dynamicDarkColorScheme(context)
+                    else dynamicLightColorScheme(context)
+
+                darkTheme -> PeachDarkColorScheme
+                else -> PeachLightColorScheme
+            }
+        }
+    val animatedScheme = animatedColorScheme(colorScheme)
 
     MaterialTheme(
-        colorScheme = colorScheme,
+        colorScheme = animatedScheme,
         typography = Typography,
         content = content
     )
