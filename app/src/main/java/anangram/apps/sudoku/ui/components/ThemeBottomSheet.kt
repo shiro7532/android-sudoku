@@ -4,36 +4,33 @@ import anangram.apps.sudoku.R
 import anangram.apps.sudoku.ui.theme.SudokuTheme
 import anangram.apps.sudoku.ui.theme.ThemePreset
 import anangram.apps.sudoku.ui.theme.ThemePresets
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -44,7 +41,6 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -68,13 +64,28 @@ fun ThemeBottomSheet(
             Text(
                 "Pick your theme",
                 style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.fillMaxWidth(),
                 textAlign = TextAlign.Center
             )
 
-            ThemePaletteCarousel(ThemePresets.All, selectedThemeIndex, onThemeSelected)
+            ThemePaletteCarousel(
+                ThemePresets.All,
+                selectedThemeIndex,
+                onThemeSelected,
+                modifier = Modifier.height(100.dp)
+            )
         }
     }
+}
+
+fun LazyListState.isItemFullyVisible(index: Int): Boolean {
+    val item = layoutInfo.visibleItemsInfo.firstOrNull { it.index == index } ?: return false
+
+    val start = item.offset
+    val end = item.offset + item.size
+
+    return start >= 0 && end <= layoutInfo.viewportEndOffset
 }
 
 @Composable
@@ -86,58 +97,26 @@ private fun ThemePaletteCarousel(
 ) {
 
     val listState = rememberLazyListState()
-    val coroutineScope = rememberCoroutineScope()
     LaunchedEffect(selectedIndex) {
-        // Animate scroll to selected item
-        listState.animateScrollToItem(selectedIndex)
+        if (!listState.isItemFullyVisible(selectedIndex))
+            listState.animateScrollToItem(selectedIndex)
     }
 
-    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(8.dp)) {
-        AnimatedVisibility(listState.canScrollBackward) {
-            IconButton(onClick = {
-                coroutineScope.launch {
-                    listState.animateScrollBy(-100f)
-                }
-            }) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_chevron_left),
-                    contentDescription = "Previous"
-                )
-            }
-        }
+    FlowRow(
+        verticalArrangement = Arrangement.Center,
+        itemVerticalAlignment = Alignment.CenterVertically,
+        modifier = modifier.fillMaxWidth()
+    ) {
 
-        LazyRow(
-            state = listState,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.Bottom,
-            modifier = Modifier
-                .weight(1f)
-                .height(100.dp)
-        ) {
-            itemsIndexed(palettes) { index, item ->
-                ThemePaletteItem(
-                    item,
-                    index == selectedIndex,
-                    { onClick(index) },
-                    modifier = Modifier.padding(4.dp)
-                )
-            }
-        }
-
-        AnimatedVisibility(listState.canScrollForward) {
-            IconButton(onClick = {
-                coroutineScope.launch {
-                    listState.animateScrollBy(100f)
-                }
-            }) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_chevron_right),
-                    contentDescription = "Next"
-                )
-            }
+        palettes.forEachIndexed { index, item ->
+            ThemePaletteItem(
+                item,
+                index == selectedIndex,
+                { onClick(index) },
+                modifier = Modifier.padding(4.dp)
+            )
         }
     }
-
 }
 
 @Composable
@@ -156,18 +135,26 @@ private fun ThemePaletteItem(
     )
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Box(
-            contentAlignment = Alignment.BottomEnd,
             modifier = modifier
                 .size(size)
-                .clip(MaterialTheme.shapes.extraSmall)
-                .background(scheme.primary)
+                .clip(MaterialTheme.shapes.small)
+                .background(scheme.primaryContainer)
+                .border(1.dp, scheme.primary, MaterialTheme.shapes.small)
                 .clickable(enabled = !selected, onClick = onClick)
         ) {
             Box(
                 modifier = Modifier
-                    .fillMaxSize(0.5f)
-                    .clip(MaterialTheme.shapes.extraSmall)
-                    .background(scheme.secondary)
+                    .fillMaxSize(0.4f)
+                    .align(Alignment.BottomEnd)
+                    .clip(
+                        RoundedCornerShape(
+                            topStart = 8.dp,
+                            topEnd = 0.dp,
+                            bottomStart = 0.dp,
+                            bottomEnd = 0.dp
+                        )
+                    )
+                    .background(scheme.primary)
             )
 
             TickReveal(
@@ -179,9 +166,9 @@ private fun ThemePaletteItem(
 
         }
         Text(
-            preset.name, style = MaterialTheme.typography.labelSmall,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.fillMaxWidth()
+            preset.name,
+            style = MaterialTheme.typography.labelSmall,
+            color = scheme.primary
         )
     }
 }
@@ -202,7 +189,7 @@ fun TickReveal(
     Icon(
         painter = painterResource(R.drawable.ic_check),
         contentDescription = "Selected",
-        tint = MaterialTheme.colorScheme.onPrimary,
+        tint = MaterialTheme.colorScheme.primary,
         modifier = modifier
             .alpha(0.7f)
             .drawWithContent {
