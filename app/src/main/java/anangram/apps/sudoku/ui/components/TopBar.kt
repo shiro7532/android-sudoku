@@ -1,43 +1,37 @@
 package anangram.apps.sudoku.ui.components
 
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Edit
+import anangram.apps.sudoku.R
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import kotlinx.coroutines.flow.Flow
+import androidx.compose.ui.res.painterResource
 import java.text.DecimalFormat
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TopBar(
-    time: Flow<Int>,
+    time: Int,
+    onToggleThemeSelector: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val gameTime by time.collectAsStateWithLifecycle(0)
+
     CenterAlignedTopAppBar(
-        title = { Text(formatSeconds(gameTime)) },
+        title = { Text(formatSeconds(time)) },
         navigationIcon = {
-            SwitchButton(
-                primary = MaterialTheme.colorScheme.primary,
-                secondary = MaterialTheme.colorScheme.secondary
-            )
-        },
-        actions = {
-            IconButton(onClick = {}) {
+            IconButton(onClick = {
+                onToggleThemeSelector()
+            }) {
                 Icon(
-                    imageVector = Icons.Default.Edit,
+                    painter = painterResource(R.drawable.ic_palette),
                     contentDescription = "Pencil Mode"
                 )
             }
-        }
+        },
+        modifier = modifier
     )
 }
 

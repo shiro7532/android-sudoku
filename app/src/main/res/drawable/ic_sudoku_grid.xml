@@ -15,7 +15,7 @@
             android:fillColor="@android:color/transparent"
             android:pathData="M36,16 L36,92"
             android:strokeWidth="8"
-            android:strokeColor="@color/white"
+            android:strokeColor="@color/sudoku_stroke"
             android:strokeLineCap="round" />
 
         <path
@@ -23,7 +23,7 @@
             android:fillColor="@android:color/transparent"
             android:pathData="M72,16 L72,92"
             android:strokeWidth="8"
-            android:strokeColor="@color/white"
+            android:strokeColor="@color/sudoku_stroke"
             android:strokeLineCap="round" />
 
         <!-- Horizontal Lines -->
@@ -32,7 +32,7 @@
             android:fillColor="@android:color/transparent"
             android:pathData="M16,36 L92,36"
             android:strokeWidth="8"
-            android:strokeColor="@color/white"
+            android:strokeColor="@color/sudoku_stroke"
             android:strokeLineCap="round" />
 
         <path
@@ -40,7 +40,7 @@
             android:fillColor="@android:color/transparent"
             android:pathData="M16,72 L92,72"
             android:strokeWidth="8"
-            android:strokeColor="@color/white"
+            android:strokeColor="@color/sudoku_stroke"
             android:strokeLineCap="round" />
     </group>
 </vector>
