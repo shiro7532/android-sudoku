@@ -11,17 +11,13 @@ portfolio use.
 
 ## ✨ Demo
 
-> Upload your MP4 files to GitHub and replace the links below.
+> Splash and Welcome https://github.com/user-attachments/assets/d971c4b6-a14a-46cc-81ad-c25991c6efc9
+> Gameplay https://github.com/user-attachments/assets/f9b56686-dcd3-4a42-8142-64df9294d566
+> Error Handling https://github.com/user-attachments/assets/4a13784e-8d77-4efd-88bc-c0f074a33eac
+> Game Reset https://github.com/user-attachments/assets/b78d2a2e-2475-4e53-bdc6-4f6c472af94c
+> Game Won https://github.com/user-attachments/assets/f0f665a7-df5f-4990-b9ea-6c17bfc8e14c
+> Leaderboard https://github.com/user-attachments/assets/ec7b2e9b-afac-4b98-a25d-6d3c3f4cabb4
 
-| Feature                 | Demo                       |
-|-------------------------|----------------------------|
-| Gameplay + Highlighting | *(video link placeholder)* |
-| Trophy / Win animation  | *(video link placeholder)* |
-| Theme Selector          | *(video link placeholder)* |
-| Error Handling          | *(video link placeholder)* |
-| Leaderboard             | *(video link placeholder)* |
-
----
 
 ## 🚀 Features
 
