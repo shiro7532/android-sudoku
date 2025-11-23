@@ -8,8 +8,8 @@ import anangram.apps.sudoku.repository.PuzzleRepository
 
 class GetNewPuzzleByDifficultyUseCase(
     val repository: PuzzleRepository
-) : UseCase.WithArgsAndResult<PuzzleDifficulty, PuzzleModel?> {
-    override suspend fun invoke(arg: UseCase.Arg<PuzzleDifficulty>): Either<PuzzleModel?> {
+) : UseCase.WithArgsAndResult<PuzzleDifficulty, PuzzleModel> {
+    override suspend fun invoke(arg: UseCase.Arg<PuzzleDifficulty>): Either<PuzzleModel> {
         try {
             val game = repository.getNewPuzzle(arg.content)
             return Either.Success(game)

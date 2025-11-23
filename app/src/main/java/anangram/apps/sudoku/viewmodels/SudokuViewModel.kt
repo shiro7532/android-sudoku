@@ -405,21 +405,7 @@ class SudokuViewModel(
                 saveTimestamp = System.currentTimeMillis(),
                 cellSaveStates = cellSaveStates
             )
-            saveGameStateUseCase(UseCase.Arg(puzzleSaveState)).unwrap(
-                onSuccess = {
-                    Log.d(
-                        "saveGameStateUseCase",
-                        "Game ${instance.id} saved successfully"
-                    )
-                },
-                onFailure = {
-                    Log.d(
-                        "saveGameStateUseCase",
-                        "Game ${instance.id} save failed",
-                        it
-                    )
-                },
-            )
+            saveGameStateUseCase(UseCase.Arg(puzzleSaveState))
 
         }
     }

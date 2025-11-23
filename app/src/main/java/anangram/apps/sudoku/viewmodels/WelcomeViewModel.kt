@@ -6,7 +6,6 @@ import anangram.apps.sudoku.ui.theme.ThemeRepository
 import anangram.apps.sudoku.usecases.GetInProgressPuzzleUseCase
 import anangram.apps.sudoku.usecases.GetNewPuzzleByDifficultyUseCase
 import anangram.apps.sudoku.usecases.PreloadPuzzlesUseCase
-import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -77,7 +76,6 @@ class WelcomeViewModel(
 
                 },
                 onFailure = {
-                    Log.e("preloadPuzzlesUseCase", "FAILURE", it)
                     _state.update { WelcomeUiState.Error("Failed to load puzzles from server!") }
 
                 }
