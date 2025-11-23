@@ -5,5 +5,5 @@ enum class HighlightState(val priority: Int) {
     SELECTED(3),
     SAME_VALUE(1),
     NEIGHBOUR(2),
-    ERROR(4)
+    ERROR(-1)
 }

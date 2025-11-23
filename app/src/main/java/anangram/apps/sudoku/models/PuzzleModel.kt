@@ -1,15 +1,25 @@
 package anangram.apps.sudoku.models
 
 import anangram.apps.sudoku.viewmodels.BoardUpdateEvent
+import kotlin.math.sqrt
 
-data class SudokuModel(
-    val unitSize: Int,
+data class PuzzleSaveState(
+    val gameId: String,
+    val isInProgress: Boolean = true,
+    val timeInSec: Int,
+    val saveTimestamp: Long,
+    val cellSaveStates: List<CellSaveState>
+)
+
+data class PuzzleModel(
+    val id: String,
     val input: Map<Int, Int>,
-    val output: Map<Int, Int>
+    val output: Map<Int, Int>,
+    val saveState: PuzzleSaveState? = null
 ) {
-
-    val sideSize = unitSize * unitSize        // 9 (for 3x3 Sudoku)
-    val size = sideSize * sideSize            // 81
+    val size = output.size
+    val sideSize = sqrt(size.toDouble()).toInt()
+    val unitSize = sqrt(sideSize.toDouble()).toInt()
 
     // ---- CELLS --------------------------------------------------------------
 
@@ -20,7 +30,7 @@ data class SudokuModel(
     // ---- OUIJA SETS: Fast, clean, entry-indexed sets ------------------------
 
     /**
-     * ouijaSets[digit].contains(cell) tells us which cells currently have that final value.
+     * ouijaSets contains(cell) tells us which cells currently have that final value.
      * Index 0 = UNASSIGNED.
      */
     private val ouijaSets: Array<MutableSet<CellModel>> =
@@ -82,6 +92,17 @@ data class SudokuModel(
             }
         }
         fillNeighbors()
+        saveState?.let { saves ->
+            saves.cellSaveStates.forEach { save ->
+                cells[save.position].takeIf { !it.isFixed }?.let { cell ->
+                    cell.loadSaveState(save)
+                    val entry = cell.state.value.entry
+                    if (entry != Entry.UNASSIGNED) {
+                        ouijaSets[entry.ordinal].add(cell)
+                    }
+                }
+            }
+        }
     }
 
     // ---- EVENT HANDLING -----------------------------------------------------

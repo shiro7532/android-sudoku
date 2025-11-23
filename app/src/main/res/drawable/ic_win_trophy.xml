@@ -1,0 +1,71 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="200dp"
+    android:height="200dp"
+    android:viewportWidth="200"
+    android:viewportHeight="200">
+
+    <!-- Trophy group (to scale/pop) -->
+    <group
+        android:name="trophy_group"
+        android:pivotX="100"
+        android:pivotY="100"
+        android:scaleX="0"
+        android:scaleY="0">
+
+        <path
+            android:name="trophy_body"
+            android:fillColor="#FFC107"
+            android:pathData="M70,60 h60 v30 a30,30 0 0,1 -60,0 z" />
+
+        <path
+            android:fillColor="#FFB000"
+            android:pathData="M70,60 c-18,0 -18,25 0,25 l0,-8 c-10,0 -10,-15 0,-17z" />
+
+        <path
+            android:fillColor="#FFB000"
+            android:pathData="M130,60 c18,0 18,25 0,25 l0,-8 c10,0 10,-15 0,-17z" />
+
+        <path
+            android:fillColor="#FFB300"
+            android:pathData="M80,110 h40 v12 h-40z" />
+
+        <path
+            android:fillColor="#D68600"
+            android:pathData="M75,122 h50 v14 h-50z" />
+    </group>
+
+    <!-- Confetti (to rotate + fade) -->
+    <group
+        android:name="confetti_group"
+        android:pivotX="100"
+        android:pivotY="100">
+        <path
+            android:name="confetti1"
+            android:fillColor="#FF5252"
+            android:pathData="M25,40 l8,0 l-4,10z" />
+        <path
+            android:name="confetti2"
+            android:fillColor="#3DDC84"
+            android:pathData="M160,35 l10,4 l-10,6z" />
+        <path
+            android:name="confetti3"
+            android:fillColor="#448AFF"
+            android:pathData="M40,140 l6,8 l-12,0z" />
+        <path
+            android:name="confetti4"
+            android:fillColor="#FF6D00"
+            android:pathData="M155,150 l8,-6 l4,10z" />
+    </group>
+
+    <!-- Sparkle (alpha animated) -->
+    <group
+        android:name="spark_group"
+        android:pivotX="100"
+        android:pivotY="100">
+        <path
+            android:name="spark1"
+            android:fillColor="#FFFFFF"
+            android:pathData="M100,40 l3,6 l-3,6 l-3,-6z" />
+    </group>
+
+</vector>

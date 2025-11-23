@@ -1,6 +1,7 @@
 package anangram.apps.sudoku.models
 
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.update
 
 class CellModel(
     val unitSize: Int,
@@ -24,11 +25,19 @@ class CellModel(
         return v
     }
 
-    suspend fun decodePencilValue(mask: Int, size: Int = unitSize * unitSize) {
-        for (i in 0 until size) {
-            pencilValues[i] = (mask and (1 shl i)) != 0
+    fun getDecodedPencilValue(encoded: Int, size: Int): BooleanArray {
+        return buildList {
+            for (i in 0 until size) {
+                add(i, (encoded and (1 shl i)) != 0)
+            }
+        }.toBooleanArray()
+    }
+
+    fun decodePencilValue(mask: Int, size: Int = unitSize * unitSize) {
+        getDecodedPencilValue(mask, size).forEachIndexed { index, bool ->
+            pencilValues[index] = bool
         }
-        state.emit(state.value.copy(pencilText = pencilText))
+        state.update { state.value.copy(pencilText = pencilText) }
 
     }
 
@@ -93,7 +102,7 @@ class CellModel(
         this.neighbors = neighbors
     }
 
-    suspend fun highlight(highlightState: HighlightState, override: Boolean = false) {
+    private suspend fun highlight(highlightState: HighlightState, override: Boolean = false) {
         if (override || state.value.highlightState.priority < highlightState.priority) {
             state.emit(state.value.copy(highlightState = highlightState))
         }
@@ -114,6 +123,10 @@ class CellModel(
         highlight(HighlightState.SAME_VALUE, override)
     }
 
+    suspend fun highlightAsError(override: Boolean = false) {
+        highlight(HighlightState.ERROR, override)
+    }
+
     suspend fun unHighlight(affectNeighbors: Boolean = true) {
         state.emit(state.value.copy(highlightState = HighlightState.IDLE))
         if (affectNeighbors)
@@ -121,5 +134,18 @@ class CellModel(
                 it.unHighlight(affectNeighbors = false)
             }
     }
+
+    fun loadSaveState(save: CellSaveState) {
+        decodePencilValue(save.pencil)
+        state.update {
+            it.copy(entry = save.entry, pencilText = pencilText)
+        }
+    }
 }
+
+data class CellSaveState(
+    val position: Int,
+    val entry: Entry,
+    val pencil: Int
+)
 

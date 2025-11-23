@@ -15,6 +15,7 @@ import java.text.DecimalFormat
 @Composable
 fun TopBar(
     time: Int,
+    onNavigateUp: () -> Unit,
     onToggleThemeSelector: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -22,6 +23,16 @@ fun TopBar(
     CenterAlignedTopAppBar(
         title = { Text(formatSeconds(time)) },
         navigationIcon = {
+            IconButton(onClick = {
+                onNavigateUp()
+            }) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_arrow_back),
+                    contentDescription = "Pencil Mode"
+                )
+            }
+        },
+        actions = {
             IconButton(onClick = {
                 onToggleThemeSelector()
             }) {

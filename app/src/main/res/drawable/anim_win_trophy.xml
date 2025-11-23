@@ -1,0 +1,19 @@
+<animated-vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:drawable="@drawable/ic_win_trophy">
+
+    <!-- Trophy pop (scale 0 → 1.05 → 1.0) -->
+    <target
+        android:name="trophy_group"
+        android:animation="@animator/trophy_pop_anim" />
+
+    <!-- Confetti spin -->
+    <target
+        android:name="confetti_group"
+        android:animation="@animator/confetti_rotate_anim" />
+
+    <!-- Sparkle blinking -->
+    <target
+        android:name="spark_group"
+        android:animation="@animator/spark_blink_anim" />
+
+</animated-vector>

@@ -1,15 +1,12 @@
 package anangram.apps.sudoku.network
 
 import anangram.apps.sudoku.network.models.SudokuResponse
-import kotlinx.serialization.Serializable
-import retrofit2.http.Body
 import retrofit2.http.GET
-import retrofit2.http.POST
+import retrofit2.http.Query
 
 interface SudokuApiService {
-    @GET("api")
-    suspend fun getRandomPuzzle(): SudokuResponse
-
-    @POST("api")
-    suspend fun getPuzzleByDifficulty(@Body body: Map<String, @Serializable Any>): SudokuResponse
+    @GET("dosuku")
+    suspend fun getMultiplePuzzles(
+        @Query("query") query: String
+    ): SudokuResponse
 }

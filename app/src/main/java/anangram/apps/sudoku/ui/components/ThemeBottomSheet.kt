@@ -89,7 +89,7 @@ fun LazyListState.isItemFullyVisible(index: Int): Boolean {
 }
 
 @Composable
-private fun ThemePaletteCarousel(
+fun ThemePaletteCarousel(
     palettes: List<ThemePreset>,
     selectedIndex: Int,
     onClick: (Int) -> Unit,
@@ -189,9 +189,8 @@ fun TickReveal(
     Icon(
         painter = painterResource(R.drawable.ic_check),
         contentDescription = "Selected",
-        tint = MaterialTheme.colorScheme.primary,
+        tint = MaterialTheme.colorScheme.onBackground,
         modifier = modifier
-            .alpha(0.7f)
             .drawWithContent {
                 val widthToShow = size.width * progress
 

@@ -1,6 +1,6 @@
 package anangram.apps.sudoku.models
 
-enum class GameDifficulty {
+enum class PuzzleDifficulty {
     EASY,
     MEDIUM,
     HARD

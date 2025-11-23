@@ -14,16 +14,20 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.runBlocking
 import org.koin.android.ext.android.get
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
         super.onCreate(savedInstanceState)
+        val themeRepository: ThemeRepository = get()
+        val currentThemeIndex = runBlocking { themeRepository.themeIndex.first() }
         enableEdgeToEdge()
         setContent {
             val themeRepository: ThemeRepository = get()
-            val themeIndex by themeRepository.themeIndex.collectAsState(initial = 0)
+            val themeIndex by themeRepository.themeIndex.collectAsState(initial = currentThemeIndex)
             SudokuTheme(themeIndex) {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                     AppNavigation(

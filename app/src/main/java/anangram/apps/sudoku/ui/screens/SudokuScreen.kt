@@ -1,42 +1,91 @@
 package anangram.apps.sudoku.ui.screens
 
+import anangram.apps.sudoku.models.CellModel
 import anangram.apps.sudoku.ui.components.BottomBar
 import anangram.apps.sudoku.ui.components.OuijaBoard
 import anangram.apps.sudoku.ui.components.SudokuBoard
 import anangram.apps.sudoku.ui.components.ThemeBottomSheet
 import anangram.apps.sudoku.ui.components.TopBar
+import anangram.apps.sudoku.viewmodels.SudokuNavigation
 import anangram.apps.sudoku.viewmodels.SudokuUiAction
+import anangram.apps.sudoku.viewmodels.SudokuUiState
 import anangram.apps.sudoku.viewmodels.SudokuViewModel
+import androidx.compose.animation.animateColor
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
 
 @Composable
-fun SudokuScreen(vm: SudokuViewModel, modifier: Modifier = Modifier) {
-    val uiState by vm.uiState.collectAsState()
-    if (uiState.showResetDialog) {
+fun SudokuScreen(
+    vm: SudokuViewModel,
+    navigateUp: () -> Unit,
+    navigateToWon: () -> Unit,
+) {
+    val state by vm.state.collectAsState()
+    LaunchedEffect(Unit) {
+        vm.navigation.collect {
+            when (it) {
+                SudokuNavigation.NavigateUp -> navigateUp()
+                SudokuNavigation.Won -> navigateToWon()
+            }
+        }
+    }
+    when (state) {
+        is SudokuUiState.UiContent -> Content(
+            state as SudokuUiState.UiContent,
+            vm.instance.cells,
+            vm::onAction
+        )
+
+        is SudokuUiState.Error -> Error((state as SudokuUiState.Error).message)
+        SudokuUiState.Loading -> Loading()
+    }
+
+}
+
+@Composable
+private fun Content(
+    state: SudokuUiState.UiContent,
+    cells: Array<CellModel>,
+    onAction: (SudokuUiAction) -> Unit
+) {
+    if (state.showResetDialog) {
         AlertDialog(
             onDismissRequest = {
-                vm.dispatch(SudokuUiAction.ResetRequested) // closes dialog
+                onAction(SudokuUiAction.RequestReset) // closes dialog
             },
             confirmButton = {
                 TextButton(onClick = {
-                    vm.dispatch(SudokuUiAction.ResetRequestConfirmed)
+                    onAction(SudokuUiAction.ConfirmResetRequest)
                 }) { Text("Sure") }
             },
             dismissButton = {
                 TextButton(onClick = {
-                    vm.dispatch(SudokuUiAction.ResetRequestDismissed)
+                    onAction(SudokuUiAction.DismissResetRequest)
                 }) { Text("Cancel") }
             },
             title = { Text("Reset puzzle?") },
@@ -46,37 +95,35 @@ fun SudokuScreen(vm: SudokuViewModel, modifier: Modifier = Modifier) {
 
 
     ThemeBottomSheet(
-        isVisible = uiState.isThemeSelectorOpen,
-        selectedThemeIndex = uiState.themeIndex,
+        isVisible = state.isThemeSelectorOpen,
+        selectedThemeIndex = state.themeIndex,
         onDismiss = {
-            vm.dispatch(SudokuUiAction.ToggleThemeSelector)
+            onAction(SudokuUiAction.ToggleThemeSelector)
         }, onThemeSelected = {
-            vm.dispatch(SudokuUiAction.ThemeSelected(it))
+            onAction(SudokuUiAction.SelectTheme(it))
         }
     )
 
     Scaffold(
         topBar = {
             TopBar(
-                time = uiState.time,
-                onToggleThemeSelector = {
-                    vm.dispatch(SudokuUiAction.ToggleThemeSelector)
-                },
-
-                )
+                time = state.time,
+                onNavigateUp = { onAction(SudokuUiAction.ClickNavigateBack) },
+                onToggleThemeSelector = { onAction(SudokuUiAction.ToggleThemeSelector) },
+            )
         },
         bottomBar = {
             BottomBar(
-                undoEnabled = uiState.undoAvailable,
-                redoEnabled = uiState.redoAvailable,
-                pencilEnabled = uiState.pencilMode,
-                onUndoClicked = { vm.dispatch(SudokuUiAction.UndoClicked) },
-                onRedoClicked = { vm.dispatch(SudokuUiAction.RedoClicked) },
-                onPencilClicked = { vm.dispatch(SudokuUiAction.PencilToggle) },
-                onResetClicked = { vm.dispatch(SudokuUiAction.ResetRequested) },
+                undoEnabled = state.undoAvailable,
+                redoEnabled = state.redoAvailable,
+                pencilEnabled = state.pencilMode,
+                onUndoClicked = { onAction(SudokuUiAction.ClickUndo) },
+                onRedoClicked = { onAction(SudokuUiAction.ClickRedo) },
+                onPencilClicked = { onAction(SudokuUiAction.TogglePencil) },
+                onResetClicked = { onAction(SudokuUiAction.RequestReset) },
             )
         },
-        modifier = modifier.fillMaxSize()
+        modifier = Modifier.fillMaxSize()
     ) { innerPadding ->
 
         // Your original column content INSIDE Scaffold content window
@@ -90,22 +137,66 @@ fun SudokuScreen(vm: SudokuViewModel, modifier: Modifier = Modifier) {
             Spacer(modifier = Modifier.weight(1f))
 
             SudokuBoard(
-                unitSize = vm.instance.unitSize,
-                cells = vm.instance.cells,
-                onCellClicked = { vm.dispatch(SudokuUiAction.CellClicked(it)) }
+                unitSize = state.unitSize,
+                cells = cells,
+                onCellClicked = { onAction(SudokuUiAction.CellClicked(it)) }
             )
 
             Spacer(modifier = Modifier.weight(0.5f))
 
             OuijaBoard(
-                selectedEntry = uiState.selectedEntry,
-                sideSize = uiState.sideSize,
-                remaining = uiState.remaining,
-                onEntryClicked = { vm.dispatch(SudokuUiAction.ValueClicked(it)) },
-                onDeleteClicked = { vm.dispatch(SudokuUiAction.DeleteClicked) },
+                selectedEntry = state.selectedEntry,
+                sideSize = state.unitSize * state.unitSize,
+                remaining = state.remaining,
+                onEntryClicked = { onAction(SudokuUiAction.ValueClicked(it)) },
+                onDeleteClicked = { onAction(SudokuUiAction.ClickDelete) },
             )
 
             Spacer(modifier = Modifier.weight(1f))
         }
     }
 }
+
+@Composable
+private fun Error(message: String, modifier: Modifier = Modifier) {
+    Surface(color = MaterialTheme.colorScheme.error) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+            modifier = modifier.fillMaxSize()
+        ) {
+            Text(
+                "Something went wrong!\n Please contact the developer.",
+                textAlign = TextAlign.Center,
+                style = MaterialTheme.typography.titleMedium
+            )
+            Spacer(modifier = Modifier.height(32.dp))
+            Text(
+                "Error Message: $message",
+                style = MaterialTheme.typography.labelMedium
+            )
+        }
+    }
+}
+
+
+@Composable
+private fun Loading(modifier: Modifier = Modifier) {
+    val infiniteTransition = rememberInfiniteTransition()
+
+    val color by infiniteTransition.animateColor(
+        initialValue = MaterialTheme.colorScheme.surface,
+        targetValue = MaterialTheme.colorScheme.surfaceContainer,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 500, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse
+        )
+    )
+    Box(
+        contentAlignment = Alignment.Center, modifier = modifier
+            .fillMaxSize()
+            .background(color)
+    ) {
+    }
+}
+
